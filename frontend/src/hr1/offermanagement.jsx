@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -207,6 +207,7 @@ export default function OfferManagement() {
       toast.success("Job posting updated successfully", { position: "top-center" });
       setSelectedJob(null);
       setEditMode(false);
+      setShowDialog(false);
     } catch (error) {
       console.error(error);
       toast.error("Failed to update job posting", { position: "top-center" });
@@ -392,7 +393,7 @@ export default function OfferManagement() {
                   
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                     <DollarSign className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
-                    <span className="text-gray-400 dark:text-gray-500">Salary: Not configured</span>
+                    {job.salary_range ? job.salary_range : <span className="text-gray-400 dark:text-gray-500">Salary: Not configured</span>}
                   </div>
                   
                   {job.employment_type && (

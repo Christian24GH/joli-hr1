@@ -1,4 +1,4 @@
-﻿// src/pages/hr1/JobPosting.jsx
+// src/pages/hr1/JobPosting.jsx
 import React, { useEffect, useState } from "react"
 import axios from "axios"
 import { toast } from "sonner"
@@ -122,9 +122,11 @@ export default function JobPosting() {
                     {job.location || 'Location TBD'}
                   </div>
                   
-                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                    <span className="text-gray-400 dark:text-gray-500">Salary: Not configured</span>
-                  </div>
+                  {job.salary_range && (
+                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                      <span className="font-medium">💰 {job.salary_range}</span>
+                    </div>
+                  )}
                   
                   {job.employment_type && (
                     <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
@@ -178,7 +180,7 @@ export default function JobPosting() {
                           <p><strong>Department:</strong> {job.department || 'N/A'}</p>
                           <p><strong>Location:</strong> {job.location || 'N/A'}</p>
                           <p><strong>Employment Type:</strong> {job.employment_type || 'N/A'}</p>
-                          <p><strong>Salary:</strong> <span className="text-gray-400 dark:text-gray-500">Not configured</span></p>
+                          <p><strong>Salary:</strong> {job.salary_range || <span className="text-gray-400 dark:text-gray-500">Not specified</span>}</p>
                           <p><strong>Application Deadline:</strong> {job.application_deadline ? new Date(job.application_deadline).toLocaleDateString() : 'N/A'}</p>
                           <p><strong>Status:</strong> <Badge variant={job.status === 'open' ? 'default' : 'secondary'}>{job.status}</Badge></p>
                         </div>

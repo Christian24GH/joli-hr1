@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { hr1 } from '@/api/hr1'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -109,6 +109,63 @@ export default function Hr1Recognition() {
     }
   }
 
+  // Evaluate award criteria
+  const evaluateCriteria = (employee, criteria) => {
+    try {
+      // Replace variables in criteria string with actual values
+      const expression = criteria
+        .replace(/attendance_rate/g, employee.attendance_rate)
+        .replace(/punctuality_score/g, employee.punctuality_score)
+        .replace(/shift_compliance/g, employee.shift_compliance)
+        .replace(/overall_score/g, employee.overall_score)
+        .replace(/improvement_trend/g, employee.improvement_trend)
+      
+      return eval(expression)
+    } catch (error) {
+      console.error('Error evaluating criteria:', error)
+      return false
+    }
+  }
+
+  // Auto-assign awards based on HR3 attendance criteria
+  const autoAssignAwards = useCallback((employeeList) => {
+    const newAwards = []
+    const newBadges = []
+    
+    employeeList.forEach(employee => {
+      awardTypes.forEach(awardType => {
+        const meetsAward = evaluateCriteria(employee, awardType.criteria)
+        if (meetsAward) {
+          newAwards.push({
+            id: Date.now() + Math.random(),
+            employee_id: employee.id,
+            employee_name: employee.name,
+            award_type: awardType.id,
+            award_name: awardType.name,
+            reason: `Automatically awarded for ${awardType.name.toLowerCase()}`,
+            points: awardType.points,
+            date_awarded: new Date().toISOString().split('T')[0],
+            awarded_by: 'System (HR3 Integration)'
+          })
+          
+          newBadges.push({
+            id: Date.now() + Math.random(),
+            employee_id: employee.id,
+            badge_type: awardType.id,
+            badge_name: awardType.name,
+            earned_date: new Date().toISOString().split('T')[0]
+          })
+        }
+      })
+    })
+    
+    if (newAwards.length > 0) {
+      setAwards(prev => [...prev, ...newAwards])
+      setBadges(prev => [...prev, ...newBadges])
+      toast.success(`${newAwards.length} new awards and ${newBadges.length} badges automatically assigned!`, { position: "top-center" })
+    }
+  }, [])
+
   // Fetch employees with HR3 attendance data
   const fetchEmployees = useCallback(async () => {
     setLoading(true)
@@ -162,71 +219,7 @@ export default function Hr1Recognition() {
     } finally {
       setLoading(false)
     }
-  }, [])
-
-  // Auto-assign awards based on HR3 attendance criteria
-  const autoAssignAwards = (employeeList) => {
-    const newAwards = []
-    const newBadges = []
-    
-    employeeList.forEach(employee => {
-      awardTypes.forEach(awardType => {
-        const meetsAward = evaluateCriteria(employee, awardType.criteria)
-        if (meetsAward) {
-          // Check if award already exists
-          const existingAward = awards.find(a => 
-            a.employee_id === employee.id && a.award_type === awardType.id
-          )
-          
-          if (!existingAward) {
-            newAwards.push({
-              id: Date.now() + Math.random(),
-              employee_id: employee.id,
-              employee_name: employee.name,
-              award_type: awardType.id,
-              award_name: awardType.name,
-              reason: `Automatically awarded for ${awardType.name.toLowerCase()}`,
-              points: awardType.points,
-              date_awarded: new Date().toISOString().split('T')[0],
-              awarded_by: 'System (HR3 Integration)'
-            })
-            
-            newBadges.push({
-              id: Date.now() + Math.random(),
-              employee_id: employee.id,
-              badge_type: awardType.id,
-              badge_name: awardType.name,
-              earned_date: new Date().toISOString().split('T')[0]
-            })
-          }
-        }
-      })
-    })
-    
-    if (newAwards.length > 0) {
-      setAwards(prev => [...prev, ...newAwards])
-      setBadges(prev => [...prev, ...newBadges])
-      toast.success(`${newAwards.length} new awards automatically assigned!`, { position: "top-center" })
-    }
-  }
-
-  // Evaluate award criteria
-  const evaluateCriteria = (employee, criteria) => {
-    try {
-      // Replace variables in criteria string with actual values
-      const expression = criteria
-        .replace(/attendance_rate/g, employee.attendance_rate)
-        .replace(/punctuality_score/g, employee.punctuality_score)
-        .replace(/shift_compliance/g, employee.shift_compliance)
-        .replace(/overall_score/g, employee.overall_score)
-        .replace(/improvement_trend/g, employee.improvement_trend)
-      
-      return eval(expression)
-    } catch (error) {
-      console.error('Error evaluating criteria:', error)
-      return false
-    }
-  }
+  }, [autoAssignAwards])
 
   // Create manual award
   const createAward = () => {
@@ -250,8 +243,17 @@ export default function Hr1Recognition() {
       awarded_by: 'Manual Assignment'
     }
 
+    const badge = {
+      id: Date.now() + Math.random(),
+      employee_id: parseInt(newAward.employee_id),
+      badge_type: newAward.award_type,
+      badge_name: awardType?.name || "",
+      earned_date: new Date().toISOString().split('T')[0]
+    }
+
     setAwards(prev => [...prev, award])
-    toast.success(`Award created for ${employee?.name}`, { position: "top-center" })
+    setBadges(prev => [...prev, badge])
+    toast.success(`Award and badge created for ${employee?.name}`, { position: "top-center" })
     resetAwardDialog()
   }
 

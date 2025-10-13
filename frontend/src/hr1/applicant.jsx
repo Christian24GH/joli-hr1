@@ -1,4 +1,4 @@
-﻿// src/hr1/applicant.jsx
+// src/hr1/applicant.jsx
 import { useEffect, useState, useCallback } from "react"
 import axios from "axios"
 import { Input } from "@/components/ui/input"
@@ -54,43 +54,134 @@ function ViewDialog({ item }) {
           View
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-none max-h-[90vh]" style={{ width: '75vw', maxWidth: '75vw' }}>
         <DialogHeader>
-          <DialogTitle>Employee Details</DialogTitle>
+          <DialogTitle className="text-2xl">Employee Details</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-6 overflow-y-auto pr-2" style={{ maxHeight: 'calc(90vh - 120px)' }}>
           {/* PERSONAL INFO */}
-          <div>
-            <h3 className="font-semibold mb-2 text-lg border-b pb-2">Personal Info</h3>
-            <div className="space-y-1">
-              <p><b>Employee Code:</b> {item.employee_code || 'N/A'}</p>
-              <p><b>Name:</b> {item.name || 'N/A'}</p>
-              <p><b>Email:</b> {item.email || 'N/A'}</p>
-              <p><b>Phone:</b> {item.phone || 'N/A'}</p>
-              <p><b>Status:</b> {item.status || 'N/A'}</p>
-              <p><b>Date of Application:</b> {item.hire_date || 'N/A'}</p>
+          <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-lg">
+            <h3 className="font-semibold mb-4 text-xl border-b pb-2">Personal Information</h3>
+            <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Employee Code</p>
+                <p className="font-medium break-words">{item.employee_code || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">First Name</p>
+                <p className="font-medium break-words">{item.first_name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Last Name</p>
+                <p className="font-medium break-words">{item.last_name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Full Name</p>
+                <p className="font-medium break-words">{item.name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Email</p>
+                <p className="font-medium break-all text-sm">{item.email || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Phone</p>
+                <p className="font-medium break-words">{item.phone || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Date of Birth</p>
+                <p className="font-medium break-words">{item.date_of_birth || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Gender</p>
+                <p className="font-medium break-words">{item.gender || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Marital Status</p>
+                <p className="font-medium break-words">{item.marital_status || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Nationality</p>
+                <p className="font-medium break-words">{item.nationality || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Years of Experience</p>
+                <p className="font-medium break-words">{item.years_of_experience || '0'} years</p>
+              </div>
+              <div className="col-span-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Address</p>
+                <p className="font-medium break-words">{item.address || 'N/A'}</p>
+              </div>
             </div>
           </div>
 
           {/* JOB INFO */}
-          <div>
-            <h3 className="font-semibold mb-2 text-lg border-b pb-2">Job Info</h3>
-            <div className="space-y-1">
-              <p><b>Job Title:</b> {item.job_title || 'N/A'}</p>
-              <p><b>Employment Type:</b> {item.employment_type || 'N/A'}</p>
-              <p><b>Department:</b> {item.department || 'N/A'}</p>
-              <p><b>Salary:</b> <span className="text-gray-400 dark:text-gray-500">Not configured</span></p>
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-lg">
+            <h3 className="font-semibold mb-4 text-xl border-b pb-2">Job Information</h3>
+            <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Job Title</p>
+                <p className="font-medium break-words">{item.job_title || item.job || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Department</p>
+                <p className="font-medium break-words">{item.department || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Applied Date</p>
+                <p className="font-medium break-words">{item.hire_date || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Status</p>
+                <p className="font-medium">
+                  <span className={`px-2 py-1 rounded text-sm ${
+                    item.status === 'hired' ? 'bg-green-100 text-green-800' :
+                    item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    item.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {item.status || 'N/A'}
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* GOVERNMENT IDs */}
+          <div className="bg-green-50 dark:bg-green-900/20 p-5 rounded-lg">
+            <h3 className="font-semibold mb-4 text-xl border-b pb-2">Government IDs</h3>
+            <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">TIN (Tax ID)</p>
+                <p className="font-medium break-words">{item.tax_id || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">SSS Number</p>
+                <p className="font-medium break-words">{item.sss_number || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">PhilHealth Number</p>
+                <p className="font-medium break-words">{item.philhealth_number || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Pag-IBIG Number</p>
+                <p className="font-medium break-words">{item.pagibig_number || 'N/A'}</p>
+              </div>
             </div>
           </div>
 
           {/* EMERGENCY CONTACT */}
-          <div>
-            <h3 className="font-semibold mb-2 text-lg border-b pb-2">Emergency Contact</h3>
-            <div className="space-y-1">
-              <p><b>Contact Name:</b> {item.emergency_contact_name || 'N/A'}</p>
-              <p><b>Contact Phone:</b> {item.emergency_contact_phone || 'N/A'}</p>
-              <p><b>Address:</b> {item.emergency_contact_address || 'N/A'}</p>
+          <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-lg">
+            <h3 className="font-semibold mb-4 text-xl border-b pb-2">Emergency Contact</h3>
+            <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Contact Name</p>
+                <p className="font-medium break-words">{item.emergency_contact || item.emergency_contact_name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Contact Phone</p>
+                <p className="font-medium break-words">{item.emergency_phone || item.emergency_contact_phone || 'N/A'}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -140,11 +231,12 @@ export default function ApplicantPage() {
     >
       <div className="flex flex-col h-full">
         <div className="flex-1">
-          <div className="flex mb-3 gap-2">
+          <div className="flex justify-between items-center mb-3 gap-2">
             <Input
               placeholder="Search Name, Email, or Position"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              className="max-w-md"
             />
             <RegisterDialog onApplicantAdded={fetchApplicants} />
           </div>

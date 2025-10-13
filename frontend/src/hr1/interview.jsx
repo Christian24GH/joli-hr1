@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 import { hr1 } from "@/api/hr1"
 import { motion } from "framer-motion"
-import { Calendar, Clock, User, Phone, Mail, Plus, Edit, Trash2, CheckCircle, XCircle } from "lucide-react"
+import { Calendar, Clock, User, Phone, Mail, Plus, Edit, Trash2, CheckCircle, XCircle, MapPin } from "lucide-react"
 import { ConfirmationModal, useConfirmation } from "@/components/ui/confirmation-modal"
 
 const api = hr1.backend.api
@@ -24,6 +24,7 @@ export default function Hr1InterviewPage() {
   const [interviewDate, setInterviewDate] = useState("")
   const [interviewTime, setInterviewTime] = useState("")
   const [interviewType, setInterviewType] = useState("")
+  const [interviewAddress, setInterviewAddress] = useState("")
   const [notes, setNotes] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   
@@ -38,11 +39,13 @@ export default function Hr1InterviewPage() {
       .get(api.interviews, { params: { q: search || undefined } })
       .then((response) => {
         const data = response.data
+        console.log("Fetched interviews:", data)
         setInterviews(Array.isArray(data) ? data : [])
       })
-      .catch(() =>
+      .catch((error) => {
+        console.error("Error fetching interviews:", error)
         toast.error("Error fetching interviews", { position: "top-center" })
-      )
+      })
       .finally(() => setLoading(false))
   }, [search])
 
@@ -64,20 +67,43 @@ export default function Hr1InterviewPage() {
       return
     }
 
+    // Validate address for in-person interviews
+    if (interviewType === 'In-person' && !interviewAddress) {
+      toast.error("Please provide an address for in-person interview", { position: "top-center" })
+      return
+    }
+
     try {
-      const interviewData = {
-        applicant_id: selectedApplicant.id,
-        date: interviewDate,
-        time: interviewTime,
-        type: interviewType || 'In-person',
-        notes: notes,
-        status: 'scheduled'
+      // Build interview data based on type
+      let interviewData = {}
+      
+      if (interviewType === 'In-person') {
+        // For in-person: only send date, time, and address
+        interviewData = {
+          applicant_id: selectedApplicant.id,
+          date: interviewDate,
+          time: interviewTime,
+          address: interviewAddress,
+          type: 'In-person',
+          status: 'scheduled'
+        }
+      } else {
+        // For video/phone: send date, time, and notes
+        interviewData = {
+          applicant_id: selectedApplicant.id,
+          date: interviewDate,
+          time: interviewTime,
+          type: interviewType,
+          notes: notes,
+          status: 'scheduled'
+        }
       }
 
       console.log("Selected applicant:", selectedApplicant)
       console.log("Interview data being sent:", interviewData)
 
-      await axios.post(api.interviews, interviewData)
+      const response = await axios.post(api.interviews, interviewData)
+      console.log("Interview creation response:", response.data)
       
       // Update applicant status to 'interviewed' when interview is scheduled
       await axios.put(`${api.applicants}/${selectedApplicant.id}`, {
@@ -88,7 +114,10 @@ export default function Hr1InterviewPage() {
       toast.success("Interview scheduled successfully", { position: "top-center" })
       setShowScheduleDialog(false)
       resetForm()
-      fetchInterviews()
+      
+      // Refresh data
+      await fetchInterviews()
+      await fetchApplicants()
     } catch (error) {
       console.error("Interview scheduling error:", error.response?.data || error.message)
       toast.error(`Failed to schedule interview: ${error.response?.data?.error || error.message}`, { position: "top-center" })
@@ -100,6 +129,7 @@ export default function Hr1InterviewPage() {
     setInterviewDate("")
     setInterviewTime("")
     setInterviewType("")
+    setInterviewAddress("")
     setNotes("")
   }
 
@@ -245,7 +275,15 @@ export default function Hr1InterviewPage() {
               
               <div>
                 <label className="block text-sm font-medium mb-2">Interview Type</label>
-                <Select onValueChange={setInterviewType}>
+                <Select onValueChange={(value) => {
+                  setInterviewType(value)
+                  // Auto-fill address for in-person interviews
+                  if (value === 'In-person') {
+                    setInterviewAddress('Ph.4, North Olympus Subdivision, Mendelssohn, Novaliches, Quezon City, 1124 Metro Manila')
+                  } else {
+                    setInterviewAddress('')
+                  }
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select interview type" />
                   </SelectTrigger>
@@ -257,14 +295,25 @@ export default function Hr1InterviewPage() {
                 </Select>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium mb-2">Notes (Optional)</label>
-                <Input
-                  placeholder="Additional notes or instructions"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </div>
+              {interviewType === 'In-person' ? (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Address <span className="text-red-500">*</span></label>
+                  <Input
+                    placeholder="Enter interview location address"
+                    value={interviewAddress}
+                    onChange={(e) => setInterviewAddress(e.target.value)}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Notes (Optional)</label>
+                  <Input
+                    placeholder="Meeting link or additional instructions"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </div>
+              )}
               
               <div className="flex gap-2 pt-4">
                 <Button variant="outline" onClick={() => setShowScheduleDialog(false)} className="flex-1">
@@ -442,9 +491,16 @@ export default function Hr1InterviewPage() {
                         {interview.type}
                       </div>
                     )}
+                    
+                    {interview.type === 'In-person' && interview.address && (
+                      <div className="flex items-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md border border-blue-200 dark:border-blue-800">
+                        <MapPin className="h-3.5 w-3.5 mr-2 text-blue-500 dark:text-blue-400" />
+                        <span className="font-medium">{interview.address}</span>
+                      </div>
+                    )}
                   </div>
                   
-                  {interview.notes && (
+                  {interview.notes && interview.type !== 'In-person' && (
                     <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-lg mt-2 border border-gray-200 dark:border-gray-700">
                       <p className="text-xs text-gray-700 dark:text-gray-300">
                         <span className="font-medium">Notes: </span>

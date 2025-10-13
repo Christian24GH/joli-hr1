@@ -97,7 +97,7 @@ export function Layout({allowedRoles }) {
             </div>
           </header>
           {/** Main content above map */}
-          <div className="flex flex-1 flex-col p-4 pt-0 relative">
+          <div className="flex flex-1 flex-col p-4 pt-0 relative overflow-hidden">
             <Outlet/>
           </div>
         </SidebarInset>
