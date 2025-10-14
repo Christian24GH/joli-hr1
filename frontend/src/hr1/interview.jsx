@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 import { hr1 } from "@/api/hr1"
 import { motion } from "framer-motion"
-import { Calendar, Clock, User, Phone, Mail, Plus, Edit, Trash2, CheckCircle, XCircle, MapPin } from "lucide-react"
+import { Calendar, Clock, User, Phone, Mail, Plus, Edit, Trash2, CheckCircle, XCircle, MapPin, Check } from "lucide-react"
 import { ConfirmationModal, useConfirmation } from "@/components/ui/confirmation-modal"
 
 const api = hr1.backend.api
@@ -27,11 +27,24 @@ export default function Hr1InterviewPage() {
   const [interviewAddress, setInterviewAddress] = useState("")
   const [notes, setNotes] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [showPendingDialog, setShowPendingDialog] = useState(false)
+  const [pendingInterview, setPendingInterview] = useState(null)
   
   // Confirmation modals
   const deleteConfirmation = useConfirmation()
   const approveConfirmation = useConfirmation()
   const rejectConfirmation = useConfirmation()
+  const markDoneConfirmation = useConfirmation()
+
+  // Check if interview date has passed
+  const isInterviewPast = (interviewDate) => {
+    if (!interviewDate) return false
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const schedDate = new Date(interviewDate)
+    schedDate.setHours(0, 0, 0, 0)
+    return schedDate < today
+  }
 
   const fetchInterviews = useCallback(() => {
     setLoading(true)
@@ -40,7 +53,21 @@ export default function Hr1InterviewPage() {
       .then((response) => {
         const data = response.data
         console.log("Fetched interviews:", data)
-        setInterviews(Array.isArray(data) ? data : [])
+        
+        // Process interviews and check for past dates or completed without result
+        const processedInterviews = Array.isArray(data) ? data.map(interview => {
+          // If interview is scheduled but date has passed, mark as pending
+          if (interview.status === 'scheduled' && isInterviewPast(interview.date)) {
+            return { ...interview, status: 'pending' }
+          }
+          // If interview is completed but has no result (approved/rejected), mark as pending
+          if (interview.status === 'completed' && !interview.result) {
+            return { ...interview, status: 'pending' }
+          }
+          return interview
+        }) : []
+        
+        setInterviews(processedInterviews)
       })
       .catch((error) => {
         console.error("Error fetching interviews:", error)
@@ -156,6 +183,73 @@ export default function Hr1InterviewPage() {
       fetchInterviews()
     } catch (error) {
       toast.error("Failed to delete interview", { position: "top-center" })
+    }
+  }
+
+  const markAsDone = async (interviewId) => {
+    try {
+      const interview = interviews.find(i => i.id === interviewId)
+      const applicant = applicants.find(a => a.id === interview.applicant_id)
+      
+      console.log("Marking interview as done:", { interviewId, interview, applicant })
+      
+      // Update interview status to completed without result
+      const interviewUpdateData = {
+        applicant_id: interview.applicant_id,
+        date: interview.date,
+        time: interview.time || null,
+        type: interview.type || null,
+        address: interview.address || null,
+        notes: interview.notes || null,
+        status: 'completed',
+        completed_date: new Date().toISOString().split('T')[0]
+      }
+      
+      console.log("Interview update data:", interviewUpdateData)
+      await axios.put(`${api.interviews}/${interviewId}`, interviewUpdateData)
+
+      toast.success(`Interview marked as done. You can approve or reject it later.`, { position: "top-center" })
+      
+      fetchInterviews()
+    } catch (error) {
+      console.error("Mark as done error:", error.response?.data || error.message)
+      
+      if (error.response?.data?.errors) {
+        console.error("Validation errors:", error.response.data.errors)
+        const errorMsg = Object.entries(error.response.data.errors)
+          .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
+          .join('; ')
+        toast.error(`Validation failed: ${errorMsg}`, { position: "top-center", duration: 8000 })
+      } else {
+        toast.error(`Failed to mark as done: ${error.response?.data?.error || error.message}`, { position: "top-center" })
+      }
+    }
+  }
+
+  const updatePendingToCompleted = async (interviewId) => {
+    try {
+      const interview = interviews.find(i => i.id === interviewId)
+      
+      // Update interview status from pending to completed
+      const interviewUpdateData = {
+        applicant_id: interview.applicant_id,
+        date: interview.date,
+        time: interview.time || null,
+        type: interview.type || null,
+        address: interview.address || null,
+        notes: interview.notes || null,
+        status: 'completed',
+        completed_date: new Date().toISOString().split('T')[0]
+      }
+      
+      await axios.put(`${api.interviews}/${interviewId}`, interviewUpdateData)
+      toast.success(`Interview marked as completed.`, { position: "top-center" })
+      setShowPendingDialog(false)
+      setPendingInterview(null)
+      fetchInterviews()
+    } catch (error) {
+      console.error("Update pending error:", error.response?.data || error.message)
+      toast.error(`Failed to update interview`, { position: "top-center" })
     }
   }
 
@@ -374,6 +468,14 @@ export default function Hr1InterviewPage() {
             Scheduled
           </Button>
           <Button
+            variant={statusFilter === "pending" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("pending")}
+            className={statusFilter === "pending" ? "bg-yellow-600 hover:bg-yellow-700 text-white" : ""}
+          >
+            Pending
+          </Button>
+          <Button
             variant={statusFilter === "approved" ? "default" : "outline"}
             size="sm"
             onClick={() => setStatusFilter("approved")}
@@ -423,6 +525,7 @@ export default function Hr1InterviewPage() {
             .filter(interview => {
               if (statusFilter === "all") return true
               if (statusFilter === "scheduled") return interview.status === "scheduled"
+              if (statusFilter === "pending") return interview.status === "pending"
               if (statusFilter === "approved") return interview.result === "approved"
               if (statusFilter === "rejected") return interview.result === "rejected"
               return true
@@ -443,14 +546,20 @@ export default function Hr1InterviewPage() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <Badge 
-                        variant={interview.status === 'scheduled' ? 'default' : interview.status === 'completed' ? 'secondary' : 'destructive'}
+                        variant={
+                          interview.status === 'scheduled' ? 'default' : 
+                          interview.status === 'pending' ? 'default' :
+                          interview.status === 'completed' ? 'secondary' : 
+                          'destructive'
+                        }
                         className={
                           interview.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                          interview.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                           interview.status === 'completed' ? 'bg-green-100 text-green-800' :
                           'bg-red-100 text-red-800'
                         }
                       >
-                        {interview.status || 'Scheduled'}
+                        {interview.status === 'pending' ? 'Pending' : interview.status || 'Scheduled'}
                       </Badge>
                       {interview.status === 'completed' && interview.result && (
                         <Badge 
@@ -522,7 +631,74 @@ export default function Hr1InterviewPage() {
                 </CardContent>
                 
                 <CardFooter className="pt-2 pb-3">
-                  {interview.status === 'scheduled' ? (
+                  {interview.status === 'pending' ? (
+                    <div className="flex gap-2 w-full">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                        onClick={() => approveConfirmation.confirm(() => completeInterview(interview.id, 'approved'))}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                        onClick={() => rejectConfirmation.confirm(() => completeInterview(interview.id, 'rejected'))}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => deleteConfirmation.confirm(() => deleteInterview(interview.id))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : interview.status === 'scheduled' ? (
+                    <div className="flex flex-col gap-2 w-full">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                        onClick={() => markDoneConfirmation.confirm(() => markAsDone(interview.id))}
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        Mark as Done
+                      </Button>
+                      <div className="flex gap-2 w-full">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                          onClick={() => approveConfirmation.confirm(() => completeInterview(interview.id, 'approved'))}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Approve
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                          onClick={() => rejectConfirmation.confirm(() => completeInterview(interview.id, 'rejected'))}
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => deleteConfirmation.confirm(() => deleteInterview(interview.id))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : interview.status === 'completed' && !interview.result ? (
                     <div className="flex gap-2 w-full">
                       <Button 
                         variant="outline" 
@@ -609,6 +785,15 @@ export default function Hr1InterviewPage() {
         description="Are you sure you want to reject this interview? This will update the applicant's status."
         confirmText="Reject"
         variant="destructive"
+      />
+
+      <ConfirmationModal
+        open={markDoneConfirmation.isOpen}
+        onOpenChange={markDoneConfirmation.setIsOpen}
+        onConfirm={markDoneConfirmation.onConfirm}
+        title="Mark Interview as Done"
+        description="Mark this interview as completed? You can approve or reject it later."
+        confirmText="Mark as Done"
       />
     </motion.div>
   )

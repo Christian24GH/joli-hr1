@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { hr1 } from '@/api/hr1'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
+import { ConfirmationModal, useConfirmation } from "@/components/ui/confirmation-modal"
 import { 
   AlertTriangle, 
   CheckCircle, 
@@ -23,7 +25,9 @@ import {
   Target,
   Award,
   BookOpen,
-  Clock
+  Clock,
+  Trash2,
+  Filter
 } from 'lucide-react'
 // import { toast } from 'react-hot-toast'
 
@@ -43,6 +47,11 @@ const Hr1Feedback = () => {
     priority: 'medium'
   })
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
+  const [search, setSearch] = useState('')
+  const [departmentFilter, setDepartmentFilter] = useState('all')
+  
+  // Confirmation modal for delete
+  const deleteConfirmation = useConfirmation()
 
   // Fetch employees and performance data
   const fetchEmployees = useCallback(() => {
@@ -82,9 +91,10 @@ const Hr1Feedback = () => {
   }, [])
 
   const fetchFeedbackData = useCallback(() => {
-    // Mock feedback data
-    const mockFeedback = []
-    setFeedbackData(mockFeedback)
+    // Load feedback from localStorage
+    const savedFeedback = localStorage.getItem('hr1_feedback_data')
+    const feedback = savedFeedback ? JSON.parse(savedFeedback) : []
+    setFeedbackData(feedback)
     setLoading(false)
   }, [])
 
@@ -119,12 +129,12 @@ const Hr1Feedback = () => {
 
   const createFeedback = () => {
     if (!newFeedback.employee_id || !newFeedback.feedback_type || !newFeedback.message) {
-      alert("Please fill in all required fields")
+      toast.error("Please fill in all required fields", { position: "top-center" })
       return
     }
 
     const feedback = {
-      id: feedbackData.length + 1,
+      id: Date.now(),
       ...newFeedback,
       employee_name: employees.find(e => e.id === parseInt(newFeedback.employee_id))?.name || "",
       status: "pending",
@@ -132,7 +142,12 @@ const Hr1Feedback = () => {
       created_by: ""
     }
 
-    setFeedbackData([...feedbackData, feedback])
+    const updatedFeedback = [...feedbackData, feedback]
+    setFeedbackData(updatedFeedback)
+    
+    // Save to localStorage
+    localStorage.setItem('hr1_feedback_data', JSON.stringify(updatedFeedback))
+    
     setNewFeedback({
       employee_id: '',
       feedback_type: '',
@@ -141,18 +156,31 @@ const Hr1Feedback = () => {
       priority: 'medium'
     })
     setShowFeedbackDialog(false)
-    alert("Feedback created successfully")
+    toast.success("Feedback created successfully", { position: "top-center" })
   }
 
   const updateFeedbackStatus = (feedbackId, status) => {
-    setFeedbackData(prev => 
-      prev.map(feedback => 
-        feedback.id === feedbackId 
-          ? { ...feedback, status }
-          : feedback
-      )
+    const updatedFeedback = feedbackData.map(feedback => 
+      feedback.id === feedbackId 
+        ? { ...feedback, status }
+        : feedback
     )
-    alert(`Feedback marked as ${status}`)
+    setFeedbackData(updatedFeedback)
+    
+    // Save to localStorage
+    localStorage.setItem('hr1_feedback_data', JSON.stringify(updatedFeedback))
+    
+    toast.success(`Feedback marked as ${status.replace('_', ' ')}`, { position: "top-center" })
+  }
+
+  const deleteFeedback = (feedbackId) => {
+    const updatedFeedback = feedbackData.filter(feedback => feedback.id !== feedbackId)
+    setFeedbackData(updatedFeedback)
+    
+    // Save to localStorage
+    localStorage.setItem('hr1_feedback_data', JSON.stringify(updatedFeedback))
+    
+    toast.success('Feedback deleted successfully', { position: "top-center" })
   }
 
   useEffect(() => {
@@ -175,6 +203,34 @@ const Hr1Feedback = () => {
   }
 
   const stats = getPerformanceStats()
+
+  // Get unique departments
+  const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))]
+
+  // Filter employees based on search and filters
+  const filteredEmployees = employees.filter(employee => {
+    const matchesSearch = employee.name.toLowerCase().includes(search.toLowerCase()) ||
+      employee.position.toLowerCase().includes(search.toLowerCase()) ||
+      employee.department.toLowerCase().includes(search.toLowerCase())
+    
+    const matchesDepartment = departmentFilter === 'all' || employee.department === departmentFilter
+    
+    return matchesSearch && matchesDepartment
+  })
+
+  // Filter feedback based on search and filters
+  const filteredFeedback = feedbackData.filter(feedback => {
+    // Only show feedback that has been created (has message and feedback_type)
+    if (!feedback.message || !feedback.feedback_type) {
+      return false
+    }
+    
+    const matchesSearch = !search || 
+      (feedback.employee_name && feedback.employee_name.toLowerCase().includes(search.toLowerCase())) ||
+      (feedback.message && feedback.message.toLowerCase().includes(search.toLowerCase()))
+    
+    return matchesSearch
+  })
 
   if (loading) {
     return (
@@ -322,8 +378,31 @@ const Hr1Feedback = () => {
         </Card>
       </div>
 
+      {/* Search and Filters */}
+      <div className="flex flex-wrap gap-4">
+        <Input
+          placeholder="Search employees or feedback..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-md flex-1"
+        />
+        
+        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+          <SelectTrigger className="w-[200px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Department" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Departments</SelectItem>
+            {departments.map(dept => (
+              <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Main Content */}
-      <Tabs defaultValue="analysis" className="space-y-4">
+      <Tabs defaultValue="analysis" className="w-full">
         <TabsList>
           <TabsTrigger value="analysis">Performance Analysis</TabsTrigger>
           <TabsTrigger value="feedback">Feedback Management</TabsTrigger>
@@ -339,7 +418,7 @@ const Hr1Feedback = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {employees.map(employee => {
+                {filteredEmployees.map(employee => {
                   const analysis = analyzePerformance(employee)
                   return (
                     <div key={employee.id} className="border rounded-lg p-4">
@@ -413,8 +492,13 @@ const Hr1Feedback = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {feedbackData.map(feedback => (
-                  <div key={feedback.id} className="border rounded-lg p-4">
+                {filteredFeedback.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    No feedback found matching your filters.
+                  </div>
+                ) : (
+                  filteredFeedback.map(feedback => (
+                    <div key={feedback.id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h3 className="font-semibold">{feedback.employee_name || `Employee ${feedback.employee_id}`}</h3>
@@ -448,30 +532,57 @@ const Hr1Feedback = () => {
                       )}
                     </div>
 
-                    {feedback.status === 'pending' && (
-                      <div className="flex space-x-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => updateFeedbackStatus(feedback.id, 'in_progress')}
-                        >
-                          Start Action
-                        </Button>
-                        <Button 
-                          size="sm"
-                          onClick={() => updateFeedbackStatus(feedback.id, 'completed')}
-                        >
-                          Mark Complete
-                        </Button>
-                      </div>
-                    )}
+                    <div className="flex space-x-2">
+                      {feedback.status === 'pending' && (
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => updateFeedbackStatus(feedback.id, 'in_progress')}
+                          >
+                            Start Action
+                          </Button>
+                          <Button 
+                            size="sm"
+                            onClick={() => updateFeedbackStatus(feedback.id, 'completed')}
+                          >
+                            Mark Complete
+                          </Button>
+                        </>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant="destructive"
+                        onClick={() => deleteConfirmation.confirm(
+                          () => deleteFeedback(feedback.id),
+                          {
+                            title: 'Delete Feedback',
+                            description: `Are you sure you want to delete feedback for ${feedback.employee_name}? This action cannot be undone.`,
+                            confirmText: 'Delete'
+                          }
+                        )}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Confirmation Modal for Delete */}
+      <ConfirmationModal
+        open={deleteConfirmation.isOpen}
+        onOpenChange={deleteConfirmation.setIsOpen}
+        onConfirm={deleteConfirmation.onConfirm}
+        title={deleteConfirmation.title || "Confirm Action"}
+        description={deleteConfirmation.description || "Are you sure you want to delete this feedback?"}
+        confirmText={deleteConfirmation.confirmText || "Confirm"}
+      />
     </div>
   )
 }

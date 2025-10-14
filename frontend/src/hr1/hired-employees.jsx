@@ -21,7 +21,9 @@ import {
   CheckCircle,
   Filter,
   Download,
-  Eye
+  Eye,
+  ArrowUpAZ,
+  ArrowDownAZ
 } from "lucide-react"
 import {
   Select,
@@ -42,6 +44,7 @@ export default function HiredEmployeesPage() {
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState("all")
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+  const [sortOrder, setSortOrder] = useState("asc")
 
   const fetchHiredEmployees = useCallback(() => {
     setLoading(true)
@@ -67,6 +70,18 @@ export default function HiredEmployeesPage() {
     fetchHiredEmployees()
   }, [fetchHiredEmployees])
 
+  // Sort function - only by name
+  const sortData = (data) => {
+    return [...data].sort((a, b) => {
+      const aName = a.name || ''
+      const bName = b.name || ''
+
+      return sortOrder === 'asc' 
+        ? aName.localeCompare(bName)
+        : bName.localeCompare(aName)
+    })
+  }
+
   // Filter employees based on search and filters
   useEffect(() => {
     let filtered = hiredEmployees
@@ -91,8 +106,11 @@ export default function HiredEmployeesPage() {
       filtered = filtered.filter(emp => emp.employment_type === employmentTypeFilter)
     }
 
+    // Apply sorting
+    filtered = sortData(filtered)
+
     setFilteredEmployees(filtered)
-  }, [search, departmentFilter, employmentTypeFilter, hiredEmployees])
+  }, [search, departmentFilter, employmentTypeFilter, hiredEmployees, sortOrder])
 
   // Get unique departments
   const departments = [...new Set(hiredEmployees.map(emp => emp.department).filter(Boolean))]
@@ -164,6 +182,25 @@ export default function HiredEmployeesPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full"
           />
+        </div>
+
+        <div className="flex gap-1">
+          <Button
+            variant={sortOrder === "asc" ? "default" : "outline"}
+            size="icon"
+            onClick={() => setSortOrder("asc")}
+            title="Sort Name A-Z"
+          >
+            <ArrowUpAZ className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={sortOrder === "desc" ? "default" : "outline"}
+            size="icon"
+            onClick={() => setSortOrder("desc")}
+            title="Sort Name Z-A"
+          >
+            <ArrowDownAZ className="h-4 w-4" />
+          </Button>
         </div>
         
         <Select value={departmentFilter} onValueChange={setDepartmentFilter}>

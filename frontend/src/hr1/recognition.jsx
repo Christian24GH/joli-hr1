@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 import { motion } from "framer-motion"
+import { ConfirmationModal, useConfirmation } from "@/components/ui/confirmation-modal"
 import { 
   Award, 
   Star, 
@@ -26,7 +27,8 @@ import {
   Edit,
   Clock,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from "lucide-react"
 
 const api = hr1.backend.api
@@ -40,6 +42,10 @@ export default function Hr1Recognition() {
   const [showAwardDialog, setShowAwardDialog] = useState(false)
   const [showNoteDialog, setShowNoteDialog] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState(null)
+  
+  // Confirmation modals
+  const deleteNoteConfirmation = useConfirmation()
+  const deleteAwardConfirmation = useConfirmation()
   
   const [newAward, setNewAward] = useState({
     employee_id: '',
@@ -251,8 +257,16 @@ export default function Hr1Recognition() {
       earned_date: new Date().toISOString().split('T')[0]
     }
 
-    setAwards(prev => [...prev, award])
-    setBadges(prev => [...prev, badge])
+    const updatedAwards = [...awards, award]
+    const updatedBadges = [...badges, badge]
+    
+    setAwards(updatedAwards)
+    setBadges(updatedBadges)
+    
+    // Save to localStorage
+    localStorage.setItem('hr1_awards', JSON.stringify(updatedAwards))
+    localStorage.setItem('hr1_badges', JSON.stringify(updatedBadges))
+    
     toast.success(`Award and badge created for ${employee?.name}`, { position: "top-center" })
     resetAwardDialog()
   }
@@ -278,7 +292,12 @@ export default function Hr1Recognition() {
       created_by: 'Owner'
     }
 
-    setOwnerNotes(prev => [...prev, note])
+    const updatedNotes = [...ownerNotes, note]
+    setOwnerNotes(updatedNotes)
+    
+    // Save to localStorage
+    localStorage.setItem('hr1_owner_notes', JSON.stringify(updatedNotes))
+    
     toast.success(`Note created for ${employee?.name}`, { position: "top-center" })
     resetNoteDialog()
   }
@@ -311,7 +330,30 @@ export default function Hr1Recognition() {
       .reduce((total, award) => total + award.points, 0)
   }
 
+  const deleteOwnerNote = (noteId) => {
+    const updatedNotes = ownerNotes.filter(note => note.id !== noteId)
+    setOwnerNotes(updatedNotes)
+    localStorage.setItem('hr1_owner_notes', JSON.stringify(updatedNotes))
+    toast.success('Owner note deleted successfully', { position: "top-center" })
+  }
+
+  const deleteAward = (awardId) => {
+    const updatedAwards = awards.filter(award => award.id !== awardId)
+    setAwards(updatedAwards)
+    localStorage.setItem('hr1_awards', JSON.stringify(updatedAwards))
+    toast.success('Award deleted successfully', { position: "top-center" })
+  }
+
   useEffect(() => {
+    // Load saved data from localStorage
+    const savedAwards = localStorage.getItem('hr1_awards')
+    const savedBadges = localStorage.getItem('hr1_badges')
+    const savedNotes = localStorage.getItem('hr1_owner_notes')
+    
+    if (savedAwards) setAwards(JSON.parse(savedAwards))
+    if (savedBadges) setBadges(JSON.parse(savedBadges))
+    if (savedNotes) setOwnerNotes(JSON.parse(savedNotes))
+    
     fetchEmployees()
   }, [fetchEmployees])
 
@@ -558,9 +600,25 @@ export default function Hr1Recognition() {
                           <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{award.reason}</div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold text-green-600 dark:text-green-400">+{award.points} pts</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{award.date_awarded}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="font-bold text-green-600 dark:text-green-400">+{award.points} pts</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{award.date_awarded}</div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteAwardConfirmation.confirm(
+                            () => deleteAward(award.id),
+                            {
+                              title: 'Delete Award',
+                              description: `Are you sure you want to delete this award for ${award.employee_name}? This action cannot be undone.`,
+                              confirmText: 'Delete'
+                            }
+                          )}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   )
@@ -603,7 +661,7 @@ export default function Hr1Recognition() {
                 {ownerNotes.map(note => (
                   <div key={note.id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-start mb-2">
-                      <div>
+                      <div className="flex-1">
                         <div className="font-medium">{note.employee_name}</div>
                         <Badge variant={
                           note.note_type === 'improvement' ? 'destructive' :
@@ -613,7 +671,23 @@ export default function Hr1Recognition() {
                           {note.note_type}
                         </Badge>
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{note.created_date}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{note.created_date}</div>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteNoteConfirmation.confirm(
+                            () => deleteOwnerNote(note.id),
+                            {
+                              title: 'Delete Owner Note',
+                              description: `Are you sure you want to delete this note for ${note.employee_name}? This action cannot be undone.`,
+                              confirmText: 'Delete'
+                            }
+                          )}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     
                     <div className="space-y-2 text-sm">
@@ -641,6 +715,24 @@ export default function Hr1Recognition() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Confirmation Modals */}
+      <ConfirmationModal
+        open={deleteNoteConfirmation.isOpen}
+        onOpenChange={deleteNoteConfirmation.setIsOpen}
+        onConfirm={deleteNoteConfirmation.onConfirm}
+        title={deleteNoteConfirmation.title || "Confirm Action"}
+        description={deleteNoteConfirmation.description || "Are you sure you want to delete this note?"}
+        confirmText={deleteNoteConfirmation.confirmText || "Confirm"}
+      />
+      <ConfirmationModal
+        open={deleteAwardConfirmation.isOpen}
+        onOpenChange={deleteAwardConfirmation.setIsOpen}
+        onConfirm={deleteAwardConfirmation.onConfirm}
+        title={deleteAwardConfirmation.title || "Confirm Action"}
+        description={deleteAwardConfirmation.description || "Are you sure you want to delete this award?"}
+        confirmText={deleteAwardConfirmation.confirmText || "Confirm"}
+      />
     </motion.div>
   )
 }

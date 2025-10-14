@@ -11,6 +11,15 @@ import RegisterDialog from "@/components/hr1/register-dialog"
 import UpdateDialog from "@/components/hr1/edit-dialog"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
+import { ConfirmationModal, useConfirmation } from "@/components/ui/confirmation-modal"
+import { Trash2, ArrowUpAZ, ArrowDownAZ } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -24,7 +33,7 @@ const reverb = hr1.reverb
 reverb.config()
 
 // --- DASHBOARD TABLE COLUMNS (only personal info) ---
-const header = [
+const getHeader = (deleteConfirmation, deleteApplicant) => [
   { title: "Employee Code", accessor: "employee_code" },
   { title: "Name", accessor: "name", cellClassName: "font-medium" },
   { title: "Email", accessor: "email" },
@@ -38,6 +47,20 @@ const header = [
       <div className="flex gap-2 justify-end">
         <UpdateDialog item={item} />
         <ViewDialog item={item} />
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => deleteConfirmation.confirm(
+            () => deleteApplicant(item.id),
+            {
+              title: 'Delete Applicant',
+              description: `Are you sure you want to delete ${item.name}? This action cannot be undone.`,
+              confirmText: 'Delete'
+            }
+          )}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
     ),
   },
@@ -195,19 +218,61 @@ export default function ApplicantPage() {
   const [page, setPage] = useState(1)
   const [totalPage, setTotalPage] = useState(1)
   const [search, setSearch] = useState("")
+  const [sortField, setSortField] = useState("name")
+  const [sortOrder, setSortOrder] = useState("asc")
+  
+  // Confirmation modal for delete
+  const deleteConfirmation = useConfirmation()
 
   const fetchApplicants = useCallback(() => {
     axios
       .get(api.applicants, { params: { page, q: search || undefined } })
       .then((response) => {
         const data = response.data
-        setApplicants(Array.isArray(data) ? data : [])
+        const sortedData = sortData(Array.isArray(data) ? data : [])
+        setApplicants(sortedData)
         setTotalPage(1)
       })
       .catch(() =>
         toast.error("Error fetching applicants", { position: "top-center" })
       )
-  }, [page, search])
+  }, [page, search, sortField, sortOrder])
+
+  const sortData = (data) => {
+    return [...data].sort((a, b) => {
+      const aValue = a[sortField]
+      const bValue = b[sortField]
+
+      // Handle null/undefined
+      if (aValue == null) return 1
+      if (bValue == null) return -1
+
+      // String comparison
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortOrder === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue)
+      }
+
+      // Number/Date comparison
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1
+      } else {
+        return aValue < bValue ? 1 : -1
+      }
+    })
+  }
+
+  const deleteApplicant = async (applicantId) => {
+    try {
+      await axios.delete(`${api.applicants}/${applicantId}`)
+      toast.success('Applicant deleted successfully', { position: "top-center" })
+      fetchApplicants()
+    } catch (error) {
+      console.error('Error deleting applicant:', error)
+      toast.error('Failed to delete applicant', { position: "top-center" })
+    }
+  }
 
   useEffect(() => {
     const delayDebounce = setTimeout(fetchApplicants, 300)
@@ -232,12 +297,45 @@ export default function ApplicantPage() {
       <div className="flex flex-col h-full">
         <div className="flex-1">
           <div className="flex justify-between items-center mb-3 gap-2">
-            <Input
-              placeholder="Search Name, Email, or Position"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-md"
-            />
+            <div className="flex gap-2 flex-1">
+              <Input
+                placeholder="Search Name, Email, or Position"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-md"
+              />
+              <Select value={sortField} onValueChange={setSortField}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="status">Status</SelectItem>
+                  <SelectItem value="hire_date">Date</SelectItem>
+                  <SelectItem value="job">Job</SelectItem>
+                  <SelectItem value="employee_code">Employee Code</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex gap-1">
+                <Button
+                  variant={sortOrder === "asc" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setSortOrder("asc")}
+                  title="Ascending"
+                >
+                  <ArrowUpAZ className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={sortOrder === "desc" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setSortOrder("desc")}
+                  title="Descending"
+                >
+                  <ArrowDownAZ className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
             <RegisterDialog onApplicantAdded={fetchApplicants} />
           </div>
 
@@ -245,7 +343,7 @@ export default function ApplicantPage() {
             <TableComponent
               list={applicants}
               recordName="applicant"
-              columns={header}
+              columns={getHeader(deleteConfirmation, deleteApplicant)}
             />
           </div>
         </div>
@@ -257,6 +355,16 @@ export default function ApplicantPage() {
           className="mt-4"
         />
       </div>
+
+      {/* Confirmation Modal for Delete */}
+      <ConfirmationModal
+        open={deleteConfirmation.isOpen}
+        onOpenChange={deleteConfirmation.setIsOpen}
+        onConfirm={deleteConfirmation.onConfirm}
+        title={deleteConfirmation.title || "Confirm Action"}
+        description={deleteConfirmation.description || "Are you sure you want to delete this applicant?"}
+        confirmText={deleteConfirmation.confirmText || "Confirm"}
+      />
     </motion.div>
   )
 }

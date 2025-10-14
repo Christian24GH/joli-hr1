@@ -62,7 +62,14 @@ class Applicants extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to create applicant'], 500);
+            \Log::error('Failed to create applicant: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request_data' => $request->all()
+            ]);
+            return response()->json([
+                'error' => 'Failed to create applicant',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 

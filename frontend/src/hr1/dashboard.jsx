@@ -1,5 +1,5 @@
-
 import { useEffect, useState, useCallback } from "react"
+import { useNavigate } from "react-router"
 import axios from "axios"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,11 +10,13 @@ import { Users, UserCheck, UserX, Calendar, TrendingUp, TrendingDown, BarChart3,
 const api = hr1.backend.api
 
 export default function Hr1Dashboard() {
+  const navigate = useNavigate()
   const [applicants, setApplicants] = useState([])
+  const [interviews, setInterviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     total: 0,
-    pending: 0,
+    pendingInterviews: 0,
     approved: 0,
     rejected: 0,
     interviewed: 0,
@@ -49,6 +51,19 @@ export default function Hr1Dashboard() {
     return months
   }
 
+  const fetchInterviews = useCallback(() => {
+    axios
+      .get(api.interviews)
+      .then((response) => {
+        const data = response.data
+        const interviewData = Array.isArray(data) ? data : []
+        setInterviews(interviewData)
+      })
+      .catch((error) => {
+        console.error("Error fetching interviews:", error)
+      })
+  }, [])
+
   const fetchApplicants = useCallback(() => {
     setLoading(true)
     axios
@@ -58,27 +73,40 @@ export default function Hr1Dashboard() {
         const applicantData = Array.isArray(data) ? data : []
         setApplicants(applicantData)
         
-        // Update statistics based on real data
-        const newStats = {
-          total: applicantData.length,
-          pending: applicantData.filter(a => a.status === 'pending').length,
-          approved: applicantData.filter(a => a.status === 'approved').length,
-          rejected: applicantData.filter(a => a.status === 'rejected').length,
-          interviewed: applicantData.filter(a => a.status === 'interviewed').length,
-          hired: applicantData.filter(a => a.status === 'hired').length
-        }
-        setStats(newStats)
-        
-        // Calculate monthly application data (last 6 months)
-        const monthlyStats = calculateMonthlyStats(applicantData)
-        setMonthlyData(monthlyStats)
-        
-        setLoading(false)
+        // Fetch interviews to calculate pending count
+        fetchInterviews()
       })
       .catch(() => {
         setLoading(false)
       })
-  }, [])
+  }, [fetchInterviews])
+
+  // Update stats when applicants or interviews change
+  useEffect(() => {
+    if (applicants.length >= 0 && interviews.length >= 0) {
+      // Count scheduled interviews (pending review)
+      const scheduledInterviews = interviews.filter(i => i.status === 'scheduled').length
+      
+      // Count completed interviews (marked as done, regardless of result)
+      const completedInterviews = interviews.filter(i => i.status === 'completed').length
+      
+      const newStats = {
+        total: applicants.length,
+        pendingInterviews: scheduledInterviews,
+        approved: applicants.filter(a => a.status === 'approved').length,
+        rejected: applicants.filter(a => a.status === 'rejected').length,
+        interviewed: completedInterviews,
+        hired: applicants.filter(a => a.status === 'hired').length
+      }
+      setStats(newStats)
+      
+      // Calculate monthly application data
+      const monthlyStats = calculateMonthlyStats(applicants)
+      setMonthlyData(monthlyStats)
+      
+      setLoading(false)
+    }
+  }, [applicants, interviews])
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -139,13 +167,13 @@ export default function Hr1Dashboard() {
 
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
+            <CardTitle className="text-sm font-medium">For Interview</CardTitle>
             <Calendar className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+            <div className="text-2xl font-bold text-yellow-600">{stats.pendingInterviews}</div>
             <p className="text-xs text-muted-foreground">
-              Awaiting review
+              Scheduled interviews
             </p>
           </CardContent>
         </Card>
@@ -219,7 +247,7 @@ export default function Hr1Dashboard() {
           <CardContent>
             <div className="space-y-1">
               {[
-                { label: 'Pending', count: stats.pending, color: 'bg-yellow-500' },
+                { label: 'For Interview', count: stats.pendingInterviews, color: 'bg-yellow-500' },
                 { label: 'Approved', count: stats.approved, color: 'bg-green-500' },
                 { label: 'Interviewed', count: stats.interviewed, color: 'bg-blue-500' },
                 { label: 'Hired', count: stats.hired, color: 'bg-purple-500' },
@@ -416,7 +444,7 @@ export default function Hr1Dashboard() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <button 
-              onClick={() => window.location.href = '/hr1/applicant'}
+              onClick={() => navigate('/applicant')}
               className="p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors text-left"
             >
               <Users className="h-5 w-5 text-blue-600 dark:text-blue-400 mb-1" />
@@ -425,7 +453,7 @@ export default function Hr1Dashboard() {
             </button>
             
             <button 
-              onClick={() => window.location.href = '/hr1/jobposting'}
+              onClick={() => navigate('/jobposting')}
               className="p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors text-left"
             >
               <BarChart3 className="h-5 w-5 text-green-600 dark:text-green-400 mb-1" />
@@ -434,7 +462,7 @@ export default function Hr1Dashboard() {
             </button>
             
             <button 
-              onClick={() => window.location.href = '/hr1/interview'}
+              onClick={() => navigate('/interview')}
               className="p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors text-left"
             >
               <Calendar className="h-5 w-5 text-purple-600 mb-1" />
@@ -443,7 +471,7 @@ export default function Hr1Dashboard() {
             </button>
             
             <button 
-              onClick={() => window.location.href = '/hr1/onboarding'}
+              onClick={() => navigate('/onboarding')}
               className="p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors text-left"
             >
               <UserCheck className="h-5 w-5 text-orange-600 mb-1" />

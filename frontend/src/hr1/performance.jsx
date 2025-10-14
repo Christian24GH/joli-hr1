@@ -81,9 +81,10 @@ export default function Hr1Performance() {
 
   const fetchPerformanceReviews = useCallback(() => {
     setLoading(true)
-    // Mock performance review data - empty array initially
-    const mockReviews = []
-    setPerformanceReviews(mockReviews)
+    // Load reviews from localStorage
+    const savedReviews = localStorage.getItem('hr1_performance_reviews')
+    const reviews = savedReviews ? JSON.parse(savedReviews) : []
+    setPerformanceReviews(reviews)
     setLoading(false)
   }, [])
 
@@ -107,7 +108,12 @@ export default function Hr1Performance() {
       reviewer: "Current User" // Replace with actual user
     }
 
-    setPerformanceReviews(prev => [...prev, newReview])
+    const updatedReviews = [...performanceReviews, newReview]
+    setPerformanceReviews(updatedReviews)
+    
+    // Save to localStorage
+    localStorage.setItem('hr1_performance_reviews', JSON.stringify(updatedReviews))
+    
     toast.success(`Performance review created for ${selectedEmployee.name}`, { position: "top-center" })
     resetCreateDialog()
   }
@@ -185,34 +191,32 @@ export default function Hr1Performance() {
               <DialogTitle>Create Performance Review</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Select Employee</label>
-                  <Select onValueChange={(value) => {
-                    const employee = employees.find(e => e.id.toString() === value)
-                    setSelectedEmployee(employee)
-                  }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose employee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employees.map((employee) => (
-                        <SelectItem key={employee.id} value={employee.id.toString()}>
-                          {employee.name} - {employee.position}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">Review Period</label>
-                  <Input
-                    placeholder="e.g., Q1 2024"
-                    value={reviewData.period}
-                    onChange={(e) => setReviewData(prev => ({ ...prev, period: e.target.value }))}
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Select Employee *</label>
+                <Select onValueChange={(value) => {
+                  const employee = employees.find(e => e.id.toString() === value)
+                  setSelectedEmployee(employee)
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.id.toString()}>
+                        {employee.name} - {employee.position}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Review Period *</label>
+                <Input
+                  placeholder="e.g., Q1 2024"
+                  value={reviewData.period}
+                  onChange={(e) => setReviewData(prev => ({ ...prev, period: e.target.value }))}
+                />
               </div>
 
               <div>

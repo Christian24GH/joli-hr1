@@ -50,20 +50,32 @@ class Onboarding extends Controller
 
             $existing = OnboardingChecklist::where('applicant_id', $validated['applicant_id'])->first();
             if ($existing) {
-                return response()->json(['error' => 'Checklist already exists'], 400);
+                return response()->json(['error' => 'Checklist already exists for this applicant'], 400);
             }
 
             $applicant = Applicant::findOrFail($validated['applicant_id']);
+            
+            // Update applicant status to onboarding
             $applicant->update(['status' => 'onboarding']);
 
+            // Create the onboarding checklist
             $checklist = OnboardingChecklist::create([
                 'applicant_id' => $validated['applicant_id'],
                 'start_date' => $validated['start_date'] ?? now(),
             ]);
 
             return response()->json($checklist, 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['error' => 'Validation failed', 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to create checklist'], 500);
+            \Log::error('Failed to create onboarding checklist: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request_data' => $request->all()
+            ]);
+            return response()->json([
+                'error' => 'Failed to create checklist', 
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -175,6 +187,25 @@ class Onboarding extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to fetch checklist: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function delete(string $id): JsonResponse
+    {
+        try {
+            $checklist = OnboardingChecklist::findOrFail($id);
+            
+            // Optionally update applicant status back to 'approved'
+            $applicant = $checklist->applicant;
+            if ($applicant && $applicant->status === 'onboarding') {
+                $applicant->update(['status' => 'approved']);
+            }
+            
+            $checklist->delete();
+            
+            return response()->json(['message' => 'Onboarding checklist deleted successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to delete checklist: ' . $e->getMessage()], 500);
         }
     }
 }
