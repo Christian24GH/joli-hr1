@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import axios from "axios"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -81,35 +81,8 @@ export default function Hr1Performance() {
 
   const fetchPerformanceReviews = useCallback(() => {
     setLoading(true)
-    // Mock performance review data
-    const mockReviews = [
-      {
-        id: 1,
-        employee_id: 1,
-        employee_name: "",
-        period: "",
-        overall_rating: 0,
-        goals: "",
-        achievements: "",
-        areas_for_improvement: "",
-        comments: "",
-        created_at: "",
-        reviewer: ""
-      },
-      {
-        id: 2,
-        employee_id: 2,
-        employee_name: "",
-        period: "",
-        overall_rating: 0,
-        goals: "",
-        achievements: "",
-        areas_for_improvement: "",
-        comments: "",
-        created_at: "",
-        reviewer: ""
-      }
-    ]
+    // Mock performance review data - empty array initially
+    const mockReviews = []
     setPerformanceReviews(mockReviews)
     setLoading(false)
   }, [])

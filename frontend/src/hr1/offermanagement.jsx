@@ -49,12 +49,51 @@ export default function OfferManagement() {
     }
   };
 
+  // TODO: Fetch financial metrics from external Financial System API
+  // When financial system is ready, replace the calculation below with API call
+  const fetchFinancialMetrics = async () => {
+    try {
+      // ========== FINANCIAL SYSTEM INTEGRATION POINT ==========
+      // To connect to external financial system, uncomment and configure:
+      // 
+      // const res = await axios.get('http://financial-system-api/salary-metrics');
+      // setFinancialData(res.data);
+      // 
+      // Expected API response format:
+      // {
+      //   total_budget: number,
+      //   committed_cost: number,
+      //   available_budget: number,
+      //   hired_count: number,
+      //   average_salary: number,
+      //   utilization_rate: number
+      // }
+      // ========================================================
+      
+      // For now, set to 0 until financial system is connected
+      setFinancialData({
+        total_budget: 0,
+        committed_cost: 0,
+        available_budget: 0,
+        hired_count: applicants.filter(a => a.status === 'hired').length,
+        average_salary: 0,
+        utilization_rate: 0
+      });
+    } catch (error) {
+      console.error("Error calculating financial metrics:", error);
+    }
+  };
+
   // Get applicant count for a specific job
   const getApplicantCount = (jobTitle) => {
     return applicants.filter(a => a.job === jobTitle || a.job_title === jobTitle).length;
   };
 
-  // ============ FINANCIAL CALCULATIONS (Ready for API Connection) ============
+  // ============ FINANCIAL CALCULATIONS ============
+  // NOTE: These functions calculate metrics locally from job postings and applicants.
+  // When integrating with an external Financial System API, replace the 
+  // fetchFinancialMetrics() function to fetch data directly from the API.
+  // The data structure is already compatible with API responses.
   
   // Calculate total salary budget from all job postings
   const calculateTotalBudget = () => {
@@ -185,6 +224,13 @@ export default function OfferManagement() {
     fetchApplicants();
   }, []);
 
+  // Calculate financial metrics when jobs or applicants change
+  useEffect(() => {
+    if (jobs.length > 0 || applicants.length > 0) {
+      fetchFinancialMetrics();
+    }
+  }, [jobs, applicants]);
+
   // Delete job posting
   const deleteJob = async (id) => {
     try {
@@ -231,8 +277,8 @@ export default function OfferManagement() {
         </Badge>
       </div>
 
-      {/* Financial Summary Cards - Hidden until financial system is connected */}
-      {false && !loading && jobs.length > 0 && (
+      {/* Financial Summary Cards - Ready for Financial System Integration */}
+      {!loading && jobs.length > 0 && financialData && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="border-l-4 border-l-green-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -241,7 +287,7 @@ export default function OfferManagement() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(getFinancialMetrics().totalBudget)}
+                {formatCurrency(financialData.total_budget)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Maximum salary budget
@@ -256,10 +302,10 @@ export default function OfferManagement() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {formatCurrency(getFinancialMetrics().committed)}
+                {formatCurrency(financialData.committed_cost)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {getFinancialMetrics().hiredCount} hired employees
+                {financialData.hired_count} hired employees
               </p>
             </CardContent>
           </Card>
@@ -271,7 +317,7 @@ export default function OfferManagement() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">
-                {formatCurrency(getFinancialMetrics().savings)}
+                {formatCurrency(financialData.available_budget)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Remaining budget
@@ -286,7 +332,7 @@ export default function OfferManagement() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">
-                {formatCurrency(getFinancialMetrics().avgSalary)}
+                {formatCurrency(financialData.average_salary)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Per hired employee
@@ -393,7 +439,9 @@ export default function OfferManagement() {
                   
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                     <DollarSign className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
-                    {job.salary_range ? job.salary_range : <span className="text-gray-400 dark:text-gray-500">Salary: Not configured</span>}
+                    <span className="text-gray-400 dark:text-gray-500">
+                      Pending financial system integration
+                    </span>
                   </div>
                   
                   {job.employment_type && (

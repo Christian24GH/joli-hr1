@@ -170,9 +170,10 @@ export default function Hr1InterviewPage() {
       const interviewUpdateData = {
         applicant_id: interview.applicant_id,
         date: interview.date,
-        time: interview.time,
-        type: interview.type,
-        notes: interview.notes,
+        time: interview.time || null,
+        type: interview.type || null,
+        address: interview.address || null,
+        notes: interview.notes || null,
         status: 'completed',
         result: result,
         completed_date: new Date().toISOString().split('T')[0]
@@ -200,7 +201,17 @@ export default function Hr1InterviewPage() {
       fetchInterviews()
     } catch (error) {
       console.error("Complete interview error:", error.response?.data || error.message)
-      toast.error(`Failed to complete interview: ${error.response?.data?.error || error.message}`, { position: "top-center" })
+      
+      if (error.response?.data?.errors) {
+        console.error("Validation errors:", error.response.data.errors)
+        console.error("Debug data:", error.response.data.debug_data)
+        const errorMsg = Object.entries(error.response.data.errors)
+          .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
+          .join('; ')
+        toast.error(`Validation failed: ${errorMsg}`, { position: "top-center", duration: 8000 })
+      } else {
+        toast.error(`Failed to complete interview: ${error.response?.data?.error || error.message}`, { position: "top-center" })
+      }
     }
   }
 
