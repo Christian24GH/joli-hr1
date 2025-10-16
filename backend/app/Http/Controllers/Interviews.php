@@ -38,6 +38,7 @@ class Interviews extends Controller
                 'date' => 'required|date',
                 'time' => 'nullable|string',
                 'type' => 'nullable|string|max:100',
+                'address' => 'nullable|string',
                 'notes' => 'nullable|string',
                 'status' => 'required|string|max:50',
                 'send_email' => 'nullable|boolean',
@@ -76,12 +77,13 @@ class Interviews extends Controller
             $validated = $request->validate([
                 'applicant_id' => 'sometimes|integer|exists:applicants,id',
                 'date' => 'sometimes|date',
-                'time' => 'sometimes|string',
-                'type' => 'sometimes|string|max:100',
-                'notes' => 'sometimes|string',
+                'time' => 'nullable|string',
+                'type' => 'nullable|string|max:100',
+                'address' => 'nullable|string|max:500',
+                'notes' => 'nullable|string',
                 'status' => 'sometimes|string|max:50',
-                'result' => 'sometimes|string|max:50',
-                'completed_date' => 'sometimes|date',
+                'result' => 'nullable|string|max:50',
+                'completed_date' => 'nullable|date',
                 'send_email' => 'nullable|boolean',
             ]);
             

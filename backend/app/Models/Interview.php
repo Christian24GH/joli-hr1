@@ -14,6 +14,7 @@ class Interview extends Model
         'date',
         'time',
         'type',
+        'address',
         'notes',
         'status',
         'result',

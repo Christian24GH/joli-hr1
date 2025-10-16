@@ -27,10 +27,16 @@ class InterviewInvitation extends Mailable
         $this->interview = $interview;
         $this->applicant = $interview->applicant;
         
-        // Default Zoom meeting details
-        $this->zoomLink = 'https://us02web.zoom.us/j/82345678901?pwd=Q1JzR3h5bGZKT2pVY2t6bGhYb0tQdz09';
-        $this->meetingId = '823 4567 8901';
-        $this->passcode = 'travel123';
+        // Only generate Zoom meeting details for Video Call interviews
+        if ($interview->type === 'Video Call') {
+            $this->zoomLink = 'https://us02web.zoom.us/j/82345678901?pwd=Q1JzR3h5bGZKT2pVY2t6bGhYb0tQdz09';
+            $this->meetingId = '823 4567 8901';
+            $this->passcode = 'travel123';
+        } else {
+            $this->zoomLink = null;
+            $this->meetingId = null;
+            $this->passcode = null;
+        }
     }
 
     /**
@@ -55,6 +61,8 @@ class InterviewInvitation extends Mailable
                 'interviewDate' => $this->interview->date,
                 'interviewTime' => $this->interview->time,
                 'interviewType' => $this->interview->type,
+                'interviewAddress' => $this->interview->address ?? null,
+                'interviewNotes' => $this->interview->notes ?? null,
                 'jobTitle' => $this->applicant->job_title,
                 'zoomLink' => $this->zoomLink,
                 'meetingId' => $this->meetingId,

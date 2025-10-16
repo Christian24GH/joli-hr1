@@ -152,6 +152,7 @@ class HR1Controller extends Controller
                 'date' => 'required|date',
                 'time' => 'nullable|string',
                 'type' => 'nullable|string|max:100',
+                'address' => 'nullable|string|max:500',
                 'notes' => 'nullable|string',
                 'status' => 'required|string|max:50',
             ]);
@@ -170,15 +171,22 @@ class HR1Controller extends Controller
         try {
             $interview = Interview::findOrFail($id);
             
+            // Log incoming request data for debugging
+            \Log::info('Update interview request', [
+                'id' => $id,
+                'data' => $request->all()
+            ]);
+            
             $validated = $request->validate([
                 'applicant_id' => 'sometimes|integer|exists:applicants,id',
                 'date' => 'sometimes|date',
-                'time' => 'sometimes|string',
-                'type' => 'sometimes|string|max:100',
-                'notes' => 'sometimes|string',
+                'time' => 'nullable|string',
+                'type' => 'nullable|string|max:100',
+                'address' => 'nullable|string|max:500',
+                'notes' => 'nullable|string',
                 'status' => 'sometimes|string|max:50',
-                'result' => 'sometimes|string|max:50',
-                'completed_date' => 'sometimes|date',
+                'result' => 'nullable|string|max:50',
+                'completed_date' => 'nullable|date',
             ]);
             
             $interview->update($validated);
@@ -186,7 +194,14 @@ class HR1Controller extends Controller
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['error' => 'Interview not found'], 404);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['errors' => $e->errors()], 422);
+            \Log::error('Validation failed', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+            return response()->json([
+                'errors' => $e->errors(),
+                'debug_data' => $request->all()
+            ], 422);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to update interview: ' . $e->getMessage()], 500);
         }

@@ -1,4 +1,4 @@
-﻿// src/pages/hr1/JobPosting.jsx
+// src/pages/hr1/JobPosting.jsx
 import React, { useEffect, useState } from "react"
 import axios from "axios"
 import { toast } from "sonner"
@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { MapPin, Calendar, Users, Briefcase, Eye } from "lucide-react"
+import { MapPin, Calendar, Users, Briefcase, Eye, DollarSign } from "lucide-react"
 import { hr1 } from "@/api/hr1"
 
 const api = hr1.backend.api
@@ -123,7 +123,10 @@ export default function JobPosting() {
                   </div>
                   
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                    <span className="text-gray-400 dark:text-gray-500">Salary: Not configured</span>
+                    <DollarSign className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
+                    <span className="text-gray-400 dark:text-gray-500">
+                      Pending financial system integration
+                    </span>
                   </div>
                   
                   {job.employment_type && (
@@ -178,7 +181,7 @@ export default function JobPosting() {
                           <p><strong>Department:</strong> {job.department || 'N/A'}</p>
                           <p><strong>Location:</strong> {job.location || 'N/A'}</p>
                           <p><strong>Employment Type:</strong> {job.employment_type || 'N/A'}</p>
-                          <p><strong>Salary:</strong> <span className="text-gray-400 dark:text-gray-500">Not configured</span></p>
+                          <p><strong>Salary:</strong> <span className="text-gray-400 dark:text-gray-500">Pending financial system integration</span></p>
                           <p><strong>Application Deadline:</strong> {job.application_deadline ? new Date(job.application_deadline).toLocaleDateString() : 'N/A'}</p>
                           <p><strong>Status:</strong> <Badge variant={job.status === 'open' ? 'default' : 'secondary'}>{job.status}</Badge></p>
                         </div>

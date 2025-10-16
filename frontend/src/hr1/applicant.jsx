@@ -1,4 +1,4 @@
-﻿// src/hr1/applicant.jsx
+// src/hr1/applicant.jsx
 import { useEffect, useState, useCallback } from "react"
 import axios from "axios"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,15 @@ import RegisterDialog from "@/components/hr1/register-dialog"
 import UpdateDialog from "@/components/hr1/edit-dialog"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
+import { ConfirmationModal, useConfirmation } from "@/components/ui/confirmation-modal"
+import { Trash2, ArrowUpAZ, ArrowDownAZ } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -24,7 +33,7 @@ const reverb = hr1.reverb
 reverb.config()
 
 // --- DASHBOARD TABLE COLUMNS (only personal info) ---
-const header = [
+const getHeader = (deleteConfirmation, deleteApplicant) => [
   { title: "Employee Code", accessor: "employee_code" },
   { title: "Name", accessor: "name", cellClassName: "font-medium" },
   { title: "Email", accessor: "email" },
@@ -38,6 +47,20 @@ const header = [
       <div className="flex gap-2 justify-end">
         <UpdateDialog item={item} />
         <ViewDialog item={item} />
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => deleteConfirmation.confirm(
+            () => deleteApplicant(item.id),
+            {
+              title: 'Delete Applicant',
+              description: `Are you sure you want to delete ${item.name}? This action cannot be undone.`,
+              confirmText: 'Delete'
+            }
+          )}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
     ),
   },
@@ -54,43 +77,134 @@ function ViewDialog({ item }) {
           View
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-none max-h-[90vh]" style={{ width: '75vw', maxWidth: '75vw' }}>
         <DialogHeader>
-          <DialogTitle>Employee Details</DialogTitle>
+          <DialogTitle className="text-2xl">Employee Details</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-6 overflow-y-auto pr-2" style={{ maxHeight: 'calc(90vh - 120px)' }}>
           {/* PERSONAL INFO */}
-          <div>
-            <h3 className="font-semibold mb-2 text-lg border-b pb-2">Personal Info</h3>
-            <div className="space-y-1">
-              <p><b>Employee Code:</b> {item.employee_code || 'N/A'}</p>
-              <p><b>Name:</b> {item.name || 'N/A'}</p>
-              <p><b>Email:</b> {item.email || 'N/A'}</p>
-              <p><b>Phone:</b> {item.phone || 'N/A'}</p>
-              <p><b>Status:</b> {item.status || 'N/A'}</p>
-              <p><b>Date of Application:</b> {item.hire_date || 'N/A'}</p>
+          <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-lg">
+            <h3 className="font-semibold mb-4 text-xl border-b pb-2">Personal Information</h3>
+            <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Employee Code</p>
+                <p className="font-medium break-words">{item.employee_code || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">First Name</p>
+                <p className="font-medium break-words">{item.first_name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Last Name</p>
+                <p className="font-medium break-words">{item.last_name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Full Name</p>
+                <p className="font-medium break-words">{item.name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Email</p>
+                <p className="font-medium break-all text-sm">{item.email || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Phone</p>
+                <p className="font-medium break-words">{item.phone || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Date of Birth</p>
+                <p className="font-medium break-words">{item.date_of_birth || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Gender</p>
+                <p className="font-medium break-words">{item.gender || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Marital Status</p>
+                <p className="font-medium break-words">{item.marital_status || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Nationality</p>
+                <p className="font-medium break-words">{item.nationality || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Years of Experience</p>
+                <p className="font-medium break-words">{item.years_of_experience || '0'} years</p>
+              </div>
+              <div className="col-span-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Address</p>
+                <p className="font-medium break-words">{item.address || 'N/A'}</p>
+              </div>
             </div>
           </div>
 
           {/* JOB INFO */}
-          <div>
-            <h3 className="font-semibold mb-2 text-lg border-b pb-2">Job Info</h3>
-            <div className="space-y-1">
-              <p><b>Job Title:</b> {item.job_title || 'N/A'}</p>
-              <p><b>Employment Type:</b> {item.employment_type || 'N/A'}</p>
-              <p><b>Department:</b> {item.department || 'N/A'}</p>
-              <p><b>Salary:</b> <span className="text-gray-400 dark:text-gray-500">Not configured</span></p>
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-lg">
+            <h3 className="font-semibold mb-4 text-xl border-b pb-2">Job Information</h3>
+            <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Job Title</p>
+                <p className="font-medium break-words">{item.job_title || item.job || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Department</p>
+                <p className="font-medium break-words">{item.department || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Applied Date</p>
+                <p className="font-medium break-words">{item.hire_date || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Status</p>
+                <p className="font-medium">
+                  <span className={`px-2 py-1 rounded text-sm ${
+                    item.status === 'hired' ? 'bg-green-100 text-green-800' :
+                    item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    item.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {item.status || 'N/A'}
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* GOVERNMENT IDs */}
+          <div className="bg-green-50 dark:bg-green-900/20 p-5 rounded-lg">
+            <h3 className="font-semibold mb-4 text-xl border-b pb-2">Government IDs</h3>
+            <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">TIN (Tax ID)</p>
+                <p className="font-medium break-words">{item.tax_id || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">SSS Number</p>
+                <p className="font-medium break-words">{item.sss_number || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">PhilHealth Number</p>
+                <p className="font-medium break-words">{item.philhealth_number || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Pag-IBIG Number</p>
+                <p className="font-medium break-words">{item.pagibig_number || 'N/A'}</p>
+              </div>
             </div>
           </div>
 
           {/* EMERGENCY CONTACT */}
-          <div>
-            <h3 className="font-semibold mb-2 text-lg border-b pb-2">Emergency Contact</h3>
-            <div className="space-y-1">
-              <p><b>Contact Name:</b> {item.emergency_contact_name || 'N/A'}</p>
-              <p><b>Contact Phone:</b> {item.emergency_contact_phone || 'N/A'}</p>
-              <p><b>Address:</b> {item.emergency_contact_address || 'N/A'}</p>
+          <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-lg">
+            <h3 className="font-semibold mb-4 text-xl border-b pb-2">Emergency Contact</h3>
+            <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Contact Name</p>
+                <p className="font-medium break-words">{item.emergency_contact || item.emergency_contact_name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Contact Phone</p>
+                <p className="font-medium break-words">{item.emergency_phone || item.emergency_contact_phone || 'N/A'}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -104,19 +218,61 @@ export default function ApplicantPage() {
   const [page, setPage] = useState(1)
   const [totalPage, setTotalPage] = useState(1)
   const [search, setSearch] = useState("")
+  const [sortField, setSortField] = useState("name")
+  const [sortOrder, setSortOrder] = useState("asc")
+  
+  // Confirmation modal for delete
+  const deleteConfirmation = useConfirmation()
 
   const fetchApplicants = useCallback(() => {
     axios
       .get(api.applicants, { params: { page, q: search || undefined } })
       .then((response) => {
         const data = response.data
-        setApplicants(Array.isArray(data) ? data : [])
+        const sortedData = sortData(Array.isArray(data) ? data : [])
+        setApplicants(sortedData)
         setTotalPage(1)
       })
       .catch(() =>
         toast.error("Error fetching applicants", { position: "top-center" })
       )
-  }, [page, search])
+  }, [page, search, sortField, sortOrder])
+
+  const sortData = (data) => {
+    return [...data].sort((a, b) => {
+      const aValue = a[sortField]
+      const bValue = b[sortField]
+
+      // Handle null/undefined
+      if (aValue == null) return 1
+      if (bValue == null) return -1
+
+      // String comparison
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortOrder === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue)
+      }
+
+      // Number/Date comparison
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1
+      } else {
+        return aValue < bValue ? 1 : -1
+      }
+    })
+  }
+
+  const deleteApplicant = async (applicantId) => {
+    try {
+      await axios.delete(`${api.applicants}/${applicantId}`)
+      toast.success('Applicant deleted successfully', { position: "top-center" })
+      fetchApplicants()
+    } catch (error) {
+      console.error('Error deleting applicant:', error)
+      toast.error('Failed to delete applicant', { position: "top-center" })
+    }
+  }
 
   useEffect(() => {
     const delayDebounce = setTimeout(fetchApplicants, 300)
@@ -140,12 +296,46 @@ export default function ApplicantPage() {
     >
       <div className="flex flex-col h-full">
         <div className="flex-1">
-          <div className="flex mb-3 gap-2">
-            <Input
-              placeholder="Search Name, Email, or Position"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex justify-between items-center mb-3 gap-2">
+            <div className="flex gap-2 flex-1">
+              <Input
+                placeholder="Search Name, Email, or Position"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-md"
+              />
+              <Select value={sortField} onValueChange={setSortField}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="status">Status</SelectItem>
+                  <SelectItem value="hire_date">Date</SelectItem>
+                  <SelectItem value="job">Job</SelectItem>
+                  <SelectItem value="employee_code">Employee Code</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex gap-1">
+                <Button
+                  variant={sortOrder === "asc" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setSortOrder("asc")}
+                  title="Ascending"
+                >
+                  <ArrowUpAZ className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={sortOrder === "desc" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setSortOrder("desc")}
+                  title="Descending"
+                >
+                  <ArrowDownAZ className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
             <RegisterDialog onApplicantAdded={fetchApplicants} />
           </div>
 
@@ -153,7 +343,7 @@ export default function ApplicantPage() {
             <TableComponent
               list={applicants}
               recordName="applicant"
-              columns={header}
+              columns={getHeader(deleteConfirmation, deleteApplicant)}
             />
           </div>
         </div>
@@ -165,6 +355,16 @@ export default function ApplicantPage() {
           className="mt-4"
         />
       </div>
+
+      {/* Confirmation Modal for Delete */}
+      <ConfirmationModal
+        open={deleteConfirmation.isOpen}
+        onOpenChange={deleteConfirmation.setIsOpen}
+        onConfirm={deleteConfirmation.onConfirm}
+        title={deleteConfirmation.title || "Confirm Action"}
+        description={deleteConfirmation.description || "Are you sure you want to delete this applicant?"}
+        confirmText={deleteConfirmation.confirmText || "Confirm"}
+      />
     </motion.div>
   )
 }

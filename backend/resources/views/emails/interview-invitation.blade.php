@@ -100,12 +100,20 @@
                 {{ $interviewType ?? 'Virtual Interview' }}
             </div>
 
+            @if($interviewType === 'In-person' && $interviewAddress)
+            <div class="detail-row">
+                <span class="detail-label">📍 Location:</span> 
+                {{ $interviewAddress }}
+            </div>
+            @endif
+
             <div class="detail-row">
                 <span class="detail-label">Topic:</span> 
                 Travel and Tours Agency Staff Interview
             </div>
         </div>
 
+        @if($interviewType === 'Video Call' && $zoomLink)
         <div style="text-align: center; margin: 25px 0;">
             <a href="{{ $zoomLink }}" class="zoom-link">
                 🔗 Join Zoom Meeting
@@ -120,13 +128,31 @@
                 <a href="{{ $zoomLink }}" style="word-break: break-all; color: #667eea;">{{ $zoomLink }}</a>
             </p>
         </div>
+        @endif
+
+        @if($interviewNotes && $interviewType !== 'In-person')
+        <div style="background: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #4caf50;">
+            <h4>📌 Additional Information:</h4>
+            <p>{{ $interviewNotes }}</p>
+        </div>
+        @endif
 
         <div style="background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
             <h4>📝 Important Notes:</h4>
             <ul>
+                @if($interviewType === 'In-person')
+                <li>Please arrive 10 minutes before the scheduled time</li>
+                <li>Bring a valid ID and a copy of your resume</li>
+                <li>Dress professionally</li>
+                @elseif($interviewType === 'Video Call')
                 <li>Please join the meeting 5 minutes before the scheduled time</li>
                 <li>Ensure you have a stable internet connection</li>
                 <li>Test your camera and microphone beforehand</li>
+                @elseif($interviewType === 'Phone Call')
+                <li>Please be available 5 minutes before the scheduled time</li>
+                <li>Ensure you're in a quiet location with good signal</li>
+                <li>Have a pen and paper ready for notes</li>
+                @endif
                 <li>Prepare any questions you may have about the position</li>
                 <li>Have a copy of your resume ready for reference</li>
             </ul>

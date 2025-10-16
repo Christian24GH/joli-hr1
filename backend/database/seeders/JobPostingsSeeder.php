@@ -13,6 +13,9 @@ class JobPostingsSeeder extends Seeder
      */
     public function run(): void
     {
+        // Clear existing job postings to avoid duplicates
+        JobPosting::truncate();
+        
         $jobPostings = [
             // 🧳 Frontline & Customer Service
             [

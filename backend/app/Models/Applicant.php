@@ -10,9 +10,39 @@ class Applicant extends Model
     use HasFactory;
 
     protected $fillable = [
-        'employee_code', 'name', 'email', 'phone', 'status', 'hire_date',
-        'job', 'job_title', 'employment_type', 'department', 'salary',
-        'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_address'
+        'employee_code',
+        'first_name',
+        'last_name',
+        'name',
+        'email',
+        'phone',
+        'date_of_birth',
+        'hire_date',
+        'probation_end',
+        'job_id',
+        'department_id',
+        'salary',
+        'employment_type',
+        'employee_type',
+        'status',
+        'address',
+        'emergency_contact',
+        'emergency_phone',
+        'tax_id',
+        'sss_number',
+        'philhealth_number',
+        'pagibig_number',
+        'gender',
+        'marital_status',
+        'nationality',
+        'years_of_experience',
+        // Legacy fields
+        'job',
+        'job_title',
+        'department',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'emergency_contact_address'
     ];
 
     /**

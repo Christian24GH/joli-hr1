@@ -42,6 +42,7 @@ Route::get('/onboarding/checklists', [Onboarding::class, 'index']);
 Route::get('/onboarding/applicant/{applicantId}', [Onboarding::class, 'getByApplicant']);
 Route::post('/onboarding/checklists', [Onboarding::class, 'create']);
 Route::put('/onboarding/checklists/{id}/item', [Onboarding::class, 'updateItem']);
+Route::delete('/onboarding/checklists/{id}', [Onboarding::class, 'delete']);
 Route::post('/onboarding/auto-check', [Onboarding::class, 'autoCheck']);
 
 // User Accounts (Administrative - Account Creation)

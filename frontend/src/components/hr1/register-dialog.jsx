@@ -24,16 +24,35 @@ export default function RegisterDialog({ onApplicantAdded }) {
   const [selectedJobId, setSelectedJobId] = useState("")
   const [formData, setFormData] = useState({
     employee_code: "",
+    first_name: "",
+    last_name: "",
     name: "",
     email: "",
     phone: "",
-    status: "pending",
+    date_of_birth: "",
     hire_date: "",
+    probation_end: "",
+    job_id: "",
+    department_id: "",
+    salary: "",
+    employment_type: "Regular",
+    employee_type: "Full-time",
+    status: "Active",
+    address: "",
+    emergency_contact: "",
+    emergency_phone: "",
+    tax_id: "",
+    sss_number: "",
+    philhealth_number: "",
+    pagibig_number: "",
+    gender: "",
+    marital_status: "",
+    nationality: "Filipino",
+    years_of_experience: 0,
+    // Legacy fields
     job: "",
     job_title: "",
-    employment_type: "",
     department: "",
-    salary: "",
     emergency_contact_name: "",
     emergency_contact_phone: "",
     emergency_contact_address: "",
@@ -90,7 +109,18 @@ export default function RegisterDialog({ onApplicantAdded }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value }
+      
+      // Auto-populate full name when first_name or last_name changes
+      if (name === 'first_name' || name === 'last_name') {
+        const firstName = name === 'first_name' ? value : prev.first_name
+        const lastName = name === 'last_name' ? value : prev.last_name
+        updated.name = `${firstName} ${lastName}`.trim()
+      }
+      
+      return updated
+    })
   }
 
   const handleSelectChange = (name, value) => {
@@ -131,7 +161,7 @@ export default function RegisterDialog({ onApplicantAdded }) {
     
     setLoading(true)
     try {
-      const res = await axios.post("http://localhost:8091/api/applicants", submitData)
+      const res = await axios.post(api.applicants, submitData)
 
       // Refresh parent list
       if (onApplicantAdded) {
@@ -143,17 +173,35 @@ export default function RegisterDialog({ onApplicantAdded }) {
 
       // Reset form + close dialog
       setFormData({ 
-        employee_code: "", 
-        name: "", 
-        email: "", 
-        phone: "", 
-        status: "pending", 
-        hire_date: "", 
+        employee_code: "",
+        first_name: "",
+        last_name: "",
+        name: "",
+        email: "",
+        phone: "",
+        date_of_birth: "",
+        hire_date: "",
+        probation_end: "",
+        job_id: "",
+        department_id: "",
+        salary: "",
+        employment_type: "Regular",
+        employee_type: "Full-time",
+        status: "Active",
+        address: "",
+        emergency_contact: "",
+        emergency_phone: "",
+        tax_id: "",
+        sss_number: "",
+        philhealth_number: "",
+        pagibig_number: "",
+        gender: "",
+        marital_status: "",
+        nationality: "Filipino",
+        years_of_experience: 0,
         job: "",
         job_title: "",
-        employment_type: "",
         department: "",
-        salary: "",
         emergency_contact_name: "",
         emergency_contact_phone: "",
         emergency_contact_address: "",
@@ -209,7 +257,7 @@ export default function RegisterDialog({ onApplicantAdded }) {
           <div className="space-y-4">
             <h3 className="font-semibold text-lg border-b pb-2">Personal Info</h3>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="employee_code">Employee Code</Label>
                 <Input
@@ -224,13 +272,25 @@ export default function RegisterDialog({ onApplicantAdded }) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
+                <Label htmlFor="first_name">First Name *</Label>
                 <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
+                  id="first_name"
+                  name="first_name"
+                  value={formData.first_name}
                   onChange={handleChange}
-                  placeholder="Enter full name"
+                  placeholder="Enter first name"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="last_name">Last Name *</Label>
+                <Input
+                  id="last_name"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                  placeholder="Enter last name"
                   required
                 />
               </div>
@@ -264,35 +324,83 @@ export default function RegisterDialog({ onApplicantAdded }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
+                <Label htmlFor="date_of_birth">Date of Birth *</Label>
+                <Input
+                  id="date_of_birth"
+                  name="date_of_birth"
+                  type="date"
+                  value={formData.date_of_birth}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select value={formData.gender} onValueChange={(value) => handleSelectChange('gender', value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
+                    <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="interviewed">Interviewed</SelectItem>
-                    <SelectItem value="onboarding">Onboarding</SelectItem>
-                    <SelectItem value="hired">Hired</SelectItem>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="hire_date">Apply Date *</Label>
+                <Label htmlFor="marital_status">Marital Status</Label>
+                <Select value={formData.marital_status} onValueChange={(value) => handleSelectChange('marital_status', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Single">Single</SelectItem>
+                    <SelectItem value="Married">Married</SelectItem>
+                    <SelectItem value="Divorced">Divorced</SelectItem>
+                    <SelectItem value="Widowed">Widowed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nationality">Nationality</Label>
                 <Input
-                  id="hire_date"
-                  name="hire_date"
-                  type="date"
-                  value={formData.hire_date}
+                  id="nationality"
+                  name="nationality"
+                  value={formData.nationality}
                   onChange={handleChange}
-                  required
+                  placeholder="Filipino"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="years_of_experience">Years of Experience</Label>
+                <Input
+                  id="years_of_experience"
+                  name="years_of_experience"
+                  type="number"
+                  value={formData.years_of_experience}
+                  onChange={handleChange}
+                  placeholder="0"
+                  min="0"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                placeholder="Enter complete address"
+              />
             </div>
           </div>
 
@@ -383,6 +491,71 @@ export default function RegisterDialog({ onApplicantAdded }) {
                 </div>
               )}
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="hire_date">Applied Date *</Label>
+              <Input
+                id="hire_date"
+                name="hire_date"
+                type="date"
+                value={formData.hire_date}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Government IDs Section */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Government IDs</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="tax_id">TIN (Tax ID)</Label>
+                <Input
+                  id="tax_id"
+                  name="tax_id"
+                  value={formData.tax_id}
+                  onChange={handleChange}
+                  placeholder="Enter TIN"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sss_number">SSS Number</Label>
+                <Input
+                  id="sss_number"
+                  name="sss_number"
+                  value={formData.sss_number}
+                  onChange={handleChange}
+                  placeholder="Enter SSS number"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="philhealth_number">PhilHealth Number</Label>
+                <Input
+                  id="philhealth_number"
+                  name="philhealth_number"
+                  value={formData.philhealth_number}
+                  onChange={handleChange}
+                  placeholder="Enter PhilHealth number"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="pagibig_number">Pag-IBIG Number</Label>
+                <Input
+                  id="pagibig_number"
+                  name="pagibig_number"
+                  value={formData.pagibig_number}
+                  onChange={handleChange}
+                  placeholder="Enter Pag-IBIG number"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Emergency Contact Section */}
@@ -391,38 +564,27 @@ export default function RegisterDialog({ onApplicantAdded }) {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="emergency_contact_name">Contact Name</Label>
+                <Label htmlFor="emergency_contact">Contact Name</Label>
                 <Input
-                  id="emergency_contact_name"
-                  name="emergency_contact_name"
-                  value={formData.emergency_contact_name}
+                  id="emergency_contact"
+                  name="emergency_contact"
+                  value={formData.emergency_contact}
                   onChange={handleChange}
                   placeholder="Enter contact name"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="emergency_contact_phone">Contact Phone</Label>
+                <Label htmlFor="emergency_phone">Contact Phone</Label>
                 <Input
-                  id="emergency_contact_phone"
-                  name="emergency_contact_phone"
+                  id="emergency_phone"
+                  name="emergency_phone"
                   type="tel"
-                  value={formData.emergency_contact_phone}
+                  value={formData.emergency_phone}
                   onChange={handleChange}
                   placeholder="Enter contact phone"
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="emergency_contact_address">Address</Label>
-              <Input
-                id="emergency_contact_address"
-                name="emergency_contact_address"
-                value={formData.emergency_contact_address}
-                onChange={handleChange}
-                placeholder="Enter emergency contact address"
-              />
             </div>
           </div>
 

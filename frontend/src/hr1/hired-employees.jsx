@@ -1,4 +1,4 @@
-﻿// src/hr1/hired-employees.jsx
+// src/hr1/hired-employees.jsx
 import { useEffect, useState, useCallback } from "react"
 import axios from "axios"
 import { Input } from "@/components/ui/input"
@@ -21,7 +21,9 @@ import {
   CheckCircle,
   Filter,
   Download,
-  Eye
+  Eye,
+  ArrowUpAZ,
+  ArrowDownAZ
 } from "lucide-react"
 import {
   Select,
@@ -42,6 +44,7 @@ export default function HiredEmployeesPage() {
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState("all")
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
+  const [sortOrder, setSortOrder] = useState("asc")
 
   const fetchHiredEmployees = useCallback(() => {
     setLoading(true)
@@ -67,6 +70,18 @@ export default function HiredEmployeesPage() {
     fetchHiredEmployees()
   }, [fetchHiredEmployees])
 
+  // Sort function - only by name
+  const sortData = (data) => {
+    return [...data].sort((a, b) => {
+      const aName = a.name || ''
+      const bName = b.name || ''
+
+      return sortOrder === 'asc' 
+        ? aName.localeCompare(bName)
+        : bName.localeCompare(aName)
+    })
+  }
+
   // Filter employees based on search and filters
   useEffect(() => {
     let filtered = hiredEmployees
@@ -91,8 +106,11 @@ export default function HiredEmployeesPage() {
       filtered = filtered.filter(emp => emp.employment_type === employmentTypeFilter)
     }
 
+    // Apply sorting
+    filtered = sortData(filtered)
+
     setFilteredEmployees(filtered)
-  }, [search, departmentFilter, employmentTypeFilter, hiredEmployees])
+  }, [search, departmentFilter, employmentTypeFilter, hiredEmployees, sortOrder])
 
   // Get unique departments
   const departments = [...new Set(hiredEmployees.map(emp => emp.department).filter(Boolean))]
@@ -164,6 +182,25 @@ export default function HiredEmployeesPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full"
           />
+        </div>
+
+        <div className="flex gap-1">
+          <Button
+            variant={sortOrder === "asc" ? "default" : "outline"}
+            size="icon"
+            onClick={() => setSortOrder("asc")}
+            title="Sort Name A-Z"
+          >
+            <ArrowUpAZ className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={sortOrder === "desc" ? "default" : "outline"}
+            size="icon"
+            onClick={() => setSortOrder("desc")}
+            title="Sort Name Z-A"
+          >
+            <ArrowDownAZ className="h-4 w-4" />
+          </Button>
         </div>
         
         <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
@@ -358,37 +395,141 @@ export default function HiredEmployeesPage() {
 
       {/* Employee Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-none max-h-[90vh]" style={{ width: '75vw', maxWidth: '75vw' }}>
           <DialogHeader>
-            <DialogTitle>Employee Details</DialogTitle>
+            <DialogTitle className="text-2xl">Employee Details</DialogTitle>
           </DialogHeader>
           {selectedEmployee && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold mb-2 text-lg border-b pb-2">Personal Information</h3>
-                <div className="space-y-2 text-sm">
-                  <p><strong>Employee Code:</strong> {selectedEmployee.employee_code || 'N/A'}</p>
-                  <p><strong>Name:</strong> {selectedEmployee.name}</p>
-                  <p><strong>Email:</strong> {selectedEmployee.email}</p>
-                  <p><strong>Phone:</strong> {selectedEmployee.phone || 'N/A'}</p>
+            <div className="space-y-6 overflow-y-auto pr-2" style={{ maxHeight: 'calc(90vh - 120px)' }}>
+              {/* PERSONAL INFO */}
+              <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-lg">
+                <h3 className="font-semibold mb-4 text-xl border-b pb-2">Personal Information</h3>
+                <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Employee Code</p>
+                    <p className="font-medium break-words">{selectedEmployee.employee_code || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">First Name</p>
+                    <p className="font-medium break-words">{selectedEmployee.first_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Last Name</p>
+                    <p className="font-medium break-words">{selectedEmployee.last_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Full Name</p>
+                    <p className="font-medium break-words">{selectedEmployee.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Email</p>
+                    <p className="font-medium break-all text-sm">{selectedEmployee.email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Phone</p>
+                    <p className="font-medium break-words">{selectedEmployee.phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Date of Birth</p>
+                    <p className="font-medium break-words">{selectedEmployee.date_of_birth || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Gender</p>
+                    <p className="font-medium break-words">{selectedEmployee.gender || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Marital Status</p>
+                    <p className="font-medium break-words">{selectedEmployee.marital_status || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Nationality</p>
+                    <p className="font-medium break-words">{selectedEmployee.nationality || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Years of Experience</p>
+                    <p className="font-medium break-words">{selectedEmployee.years_of_experience || '0'} years</p>
+                  </div>
+                  <div className="col-span-4">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Address</p>
+                    <p className="font-medium break-words">{selectedEmployee.address || 'N/A'}</p>
+                  </div>
                 </div>
               </div>
-              <div>
-                <h3 className="font-semibold mb-2 text-lg border-b pb-2">Job Information</h3>
-                <div className="space-y-2 text-sm">
-                  <p><strong>Job Title:</strong> {selectedEmployee.job_title || 'N/A'}</p>
-                  <p><strong>Department:</strong> {selectedEmployee.department || 'N/A'}</p>
-                  <p><strong>Employment Type:</strong> {selectedEmployee.employment_type || 'N/A'}</p>
-                  <p><strong>Hire Date:</strong> {selectedEmployee.hire_date ? new Date(selectedEmployee.hire_date).toLocaleDateString() : 'N/A'}</p>
-                  <p><strong>Status:</strong> <Badge variant="default" className="bg-green-100 text-green-800">{selectedEmployee.status}</Badge></p>
+
+              {/* JOB INFO */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-lg">
+                <h3 className="font-semibold mb-4 text-xl border-b pb-2">Job Information</h3>
+                <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Job Title</p>
+                    <p className="font-medium break-words">{selectedEmployee.job_title || selectedEmployee.job || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Department</p>
+                    <p className="font-medium break-words">{selectedEmployee.department || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Employment Type</p>
+                    <p className="font-medium break-words">{selectedEmployee.employment_type || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Hire Date</p>
+                    <p className="font-medium break-words">{selectedEmployee.hire_date || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Salary</p>
+                    <p className="font-medium break-words">{selectedEmployee.salary || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Status</p>
+                    <p className="font-medium">
+                      <span className="px-2 py-1 rounded text-sm bg-green-100 text-green-800">
+                        {selectedEmployee.status || 'N/A'}
+                      </span>
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div>
-                <h3 className="font-semibold mb-2 text-lg border-b pb-2">Emergency Contact</h3>
-                <div className="space-y-2 text-sm">
-                  <p><strong>Contact Name:</strong> {selectedEmployee.emergency_contact_name || 'N/A'}</p>
-                  <p><strong>Contact Phone:</strong> {selectedEmployee.emergency_contact_phone || 'N/A'}</p>
-                  <p><strong>Address:</strong> {selectedEmployee.emergency_contact_address || 'N/A'}</p>
+
+              {/* GOVERNMENT IDs */}
+              <div className="bg-green-50 dark:bg-green-900/20 p-5 rounded-lg">
+                <h3 className="font-semibold mb-4 text-xl border-b pb-2">Government IDs</h3>
+                <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">TIN (Tax ID)</p>
+                    <p className="font-medium break-words">{selectedEmployee.tax_id || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">SSS Number</p>
+                    <p className="font-medium break-words">{selectedEmployee.sss_number || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">PhilHealth Number</p>
+                    <p className="font-medium break-words">{selectedEmployee.philhealth_number || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Pag-IBIG Number</p>
+                    <p className="font-medium break-words">{selectedEmployee.pagibig_number || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* EMERGENCY CONTACT */}
+              <div className="bg-orange-50 dark:bg-orange-900/20 p-5 rounded-lg">
+                <h3 className="font-semibold mb-4 text-xl border-b pb-2">Emergency Contact</h3>
+                <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Contact Name</p>
+                    <p className="font-medium break-words">{selectedEmployee.emergency_contact || selectedEmployee.emergency_contact_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Contact Phone</p>
+                    <p className="font-medium break-words">{selectedEmployee.emergency_phone || selectedEmployee.emergency_contact_phone || 'N/A'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Contact Address</p>
+                    <p className="font-medium break-words">{selectedEmployee.emergency_contact_address || 'N/A'}</p>
+                  </div>
                 </div>
               </div>
             </div>

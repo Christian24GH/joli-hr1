@@ -59,6 +59,11 @@ export const hr1 = {
       checkAccount: (applicantId) => `${backendUri}/api/accounts/check/${applicantId}`,
       updateAccount: (userId) => `${backendUri}/api/accounts/${userId}`,
       deleteAccount: (userId) => `${backendUri}/api/accounts/${userId}`,
+
+      // ✅ Financial API endpoints
+      financialMetrics: `${backendUri}/api/financial/metrics`,
+      syncJob: (id) => `${backendUri}/api/financial/sync-job/${id}`,
+      syncApplicant: (applicantId, jobId) => `${backendUri}/api/financial/sync-applicant/${applicantId}/${jobId}`,
     },
   },
 }

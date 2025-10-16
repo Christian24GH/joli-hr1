@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react"
 import axios from "axios"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { ConfirmationModal, useConfirmation } from "@/components/ui/confirmation-modal"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -10,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner"
 import { hr1 } from "@/api/hr1"
 import { motion } from "framer-motion"
-import { CheckCircle, Circle, User, Calendar, Briefcase, Mail, Phone, Plus, ExternalLink, Award } from "lucide-react"
+import { CheckCircle, Circle, User, Calendar, Briefcase, Mail, Phone, Plus, ExternalLink, Award, Trash2 } from "lucide-react"
 
 const api = hr1.backend.api
 
@@ -30,6 +31,9 @@ export default function Hr1Onboarding() {
   const [loading, setLoading] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [selectedApplicant, setSelectedApplicant] = useState(null)
+  
+  // Confirmation modal for checklist item toggle
+  const toggleItemConfirmation = useConfirmation()
 
   const fetchApplicants = useCallback(() => {
     axios
@@ -96,11 +100,15 @@ export default function Hr1Onboarding() {
       setSelectedApplicant(null)
     } catch (error) {
       console.error("Error creating onboarding checklist:", error)
-      toast.error(error.response?.data?.error || "Failed to create onboarding checklist", { position: "top-center" })
+      console.error("Error response:", error.response?.data)
+      console.error("Error message:", error.response?.data?.message)
+      
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || "Failed to create onboarding checklist"
+      toast.error(errorMessage, { position: "top-center", duration: 5000 })
     }
   }
 
-  const toggleChecklistItem = async (onboardingId, itemKey, currentStatus) => {
+  const toggleChecklistItem = async (onboardingId, itemKey, currentStatus, taskName) => {
     try {
       await axios.put(api.updateOnboardingItem(onboardingId), {
         item_key: itemKey,
@@ -111,10 +119,31 @@ export default function Hr1Onboarding() {
       // Refresh the onboarding list
       fetchOnboardingList()
       
-      toast.success('Checklist item updated', { position: "top-center" })
+      const action = !currentStatus ? 'completed' : 'unchecked'
+      toast.success(`Task "${taskName}" ${action}`, { position: "top-center" })
     } catch (error) {
       console.error("Error updating checklist item:", error)
       toast.error("Failed to update checklist item", { position: "top-center" })
+    }
+  }
+
+  const deleteOnboardingChecklist = async (onboardingId, applicantName) => {
+    if (!confirm(`Are you sure you want to delete the onboarding checklist for ${applicantName}?`)) {
+      return
+    }
+
+    try {
+      // Note: You'll need to add a delete endpoint in the backend
+      await axios.delete(`${api.onboarding}/${onboardingId}`)
+      
+      toast.success('Onboarding checklist deleted', { position: "top-center" })
+      
+      // Refresh lists
+      fetchOnboardingList()
+      fetchApplicants()
+    } catch (error) {
+      console.error("Error deleting onboarding checklist:", error)
+      toast.error("Failed to delete checklist", { position: "top-center" })
     }
   }
 
@@ -320,7 +349,17 @@ export default function Hr1Onboarding() {
                       <div key={item.key} className="flex items-start space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800">
                         <Checkbox
                           checked={item.completed}
-                          onCheckedChange={() => toggleChecklistItem(onboarding.id, item.key, item.completed)}
+                          onCheckedChange={() => {
+                            const action = item.completed ? 'uncheck' : 'complete'
+                            toggleItemConfirmation.confirm(
+                              () => toggleChecklistItem(onboarding.id, item.key, item.completed, item.task),
+                              {
+                                title: `${action === 'complete' ? 'Complete' : 'Uncheck'} Task`,
+                                description: `Are you sure you want to ${action} "${item.task}"?`,
+                                confirmText: action === 'complete' ? 'Complete' : 'Uncheck'
+                              }
+                            )
+                          }}
                           className="mt-0.5"
                         />
                         <div className="flex-1 min-w-0">
@@ -345,7 +384,7 @@ export default function Hr1Onboarding() {
                 </CardContent>
                 
                 <CardFooter className="pt-4">
-                  <div className="w-full">
+                  <div className="w-full space-y-2">
                     {progress === 100 ? (
                       <Badge className="w-full justify-center bg-green-100 text-green-800">
                         <CheckCircle className="h-4 w-4 mr-2" />
@@ -357,6 +396,15 @@ export default function Hr1Onboarding() {
                         Onboarding in Progress
                       </Badge>
                     )}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => deleteOnboardingChecklist(onboarding.id, onboarding.applicant_name)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Checklist
+                    </Button>
                   </div>
                 </CardFooter>
               </Card>
@@ -364,6 +412,15 @@ export default function Hr1Onboarding() {
           })}
         </div>
       )}
+      {/* Confirmation Modal for Toggle Item */}
+      <ConfirmationModal
+        open={toggleItemConfirmation.isOpen}
+        onOpenChange={toggleItemConfirmation.setIsOpen}
+        onConfirm={toggleItemConfirmation.onConfirm}
+        title={toggleItemConfirmation.title || "Confirm Action"}
+        description={toggleItemConfirmation.description || "Are you sure you want to proceed?"}
+        confirmText={toggleItemConfirmation.confirmText || "Confirm"}
+      />
     </motion.div>
   )
 }

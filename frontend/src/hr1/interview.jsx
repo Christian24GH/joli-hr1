@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 import { hr1 } from "@/api/hr1"
 import { motion } from "framer-motion"
-import { Calendar, Clock, User, Phone, Mail, Plus, Edit, Trash2, CheckCircle, XCircle } from "lucide-react"
+import { Calendar, Clock, User, Phone, Mail, Plus, Edit, Trash2, CheckCircle, XCircle, MapPin, Check } from "lucide-react"
 import { ConfirmationModal, useConfirmation } from "@/components/ui/confirmation-modal"
 
 const api = hr1.backend.api
@@ -24,13 +24,27 @@ export default function Hr1InterviewPage() {
   const [interviewDate, setInterviewDate] = useState("")
   const [interviewTime, setInterviewTime] = useState("")
   const [interviewType, setInterviewType] = useState("")
+  const [interviewAddress, setInterviewAddress] = useState("")
   const [notes, setNotes] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [showPendingDialog, setShowPendingDialog] = useState(false)
+  const [pendingInterview, setPendingInterview] = useState(null)
   
   // Confirmation modals
   const deleteConfirmation = useConfirmation()
   const approveConfirmation = useConfirmation()
   const rejectConfirmation = useConfirmation()
+  const markDoneConfirmation = useConfirmation()
+
+  // Check if interview date has passed
+  const isInterviewPast = (interviewDate) => {
+    if (!interviewDate) return false
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const schedDate = new Date(interviewDate)
+    schedDate.setHours(0, 0, 0, 0)
+    return schedDate < today
+  }
 
   const fetchInterviews = useCallback(() => {
     setLoading(true)
@@ -38,11 +52,27 @@ export default function Hr1InterviewPage() {
       .get(api.interviews, { params: { q: search || undefined } })
       .then((response) => {
         const data = response.data
-        setInterviews(Array.isArray(data) ? data : [])
+        console.log("Fetched interviews:", data)
+        
+        // Process interviews and check for past dates or completed without result
+        const processedInterviews = Array.isArray(data) ? data.map(interview => {
+          // If interview is scheduled but date has passed, mark as pending
+          if (interview.status === 'scheduled' && isInterviewPast(interview.date)) {
+            return { ...interview, status: 'pending' }
+          }
+          // If interview is completed but has no result (approved/rejected), mark as pending
+          if (interview.status === 'completed' && !interview.result) {
+            return { ...interview, status: 'pending' }
+          }
+          return interview
+        }) : []
+        
+        setInterviews(processedInterviews)
       })
-      .catch(() =>
+      .catch((error) => {
+        console.error("Error fetching interviews:", error)
         toast.error("Error fetching interviews", { position: "top-center" })
-      )
+      })
       .finally(() => setLoading(false))
   }, [search])
 
@@ -64,20 +94,43 @@ export default function Hr1InterviewPage() {
       return
     }
 
+    // Validate address for in-person interviews
+    if (interviewType === 'In-person' && !interviewAddress) {
+      toast.error("Please provide an address for in-person interview", { position: "top-center" })
+      return
+    }
+
     try {
-      const interviewData = {
-        applicant_id: selectedApplicant.id,
-        date: interviewDate,
-        time: interviewTime,
-        type: interviewType || 'In-person',
-        notes: notes,
-        status: 'scheduled'
+      // Build interview data based on type
+      let interviewData = {}
+      
+      if (interviewType === 'In-person') {
+        // For in-person: only send date, time, and address
+        interviewData = {
+          applicant_id: selectedApplicant.id,
+          date: interviewDate,
+          time: interviewTime,
+          address: interviewAddress,
+          type: 'In-person',
+          status: 'scheduled'
+        }
+      } else {
+        // For video/phone: send date, time, and notes
+        interviewData = {
+          applicant_id: selectedApplicant.id,
+          date: interviewDate,
+          time: interviewTime,
+          type: interviewType,
+          notes: notes,
+          status: 'scheduled'
+        }
       }
 
       console.log("Selected applicant:", selectedApplicant)
       console.log("Interview data being sent:", interviewData)
 
-      await axios.post(api.interviews, interviewData)
+      const response = await axios.post(api.interviews, interviewData)
+      console.log("Interview creation response:", response.data)
       
       // Update applicant status to 'interviewed' when interview is scheduled
       await axios.put(`${api.applicants}/${selectedApplicant.id}`, {
@@ -88,7 +141,10 @@ export default function Hr1InterviewPage() {
       toast.success("Interview scheduled successfully", { position: "top-center" })
       setShowScheduleDialog(false)
       resetForm()
-      fetchInterviews()
+      
+      // Refresh data
+      await fetchInterviews()
+      await fetchApplicants()
     } catch (error) {
       console.error("Interview scheduling error:", error.response?.data || error.message)
       toast.error(`Failed to schedule interview: ${error.response?.data?.error || error.message}`, { position: "top-center" })
@@ -100,6 +156,7 @@ export default function Hr1InterviewPage() {
     setInterviewDate("")
     setInterviewTime("")
     setInterviewType("")
+    setInterviewAddress("")
     setNotes("")
   }
 
@@ -129,6 +186,73 @@ export default function Hr1InterviewPage() {
     }
   }
 
+  const markAsDone = async (interviewId) => {
+    try {
+      const interview = interviews.find(i => i.id === interviewId)
+      const applicant = applicants.find(a => a.id === interview.applicant_id)
+      
+      console.log("Marking interview as done:", { interviewId, interview, applicant })
+      
+      // Update interview status to completed without result
+      const interviewUpdateData = {
+        applicant_id: interview.applicant_id,
+        date: interview.date,
+        time: interview.time || null,
+        type: interview.type || null,
+        address: interview.address || null,
+        notes: interview.notes || null,
+        status: 'completed',
+        completed_date: new Date().toISOString().split('T')[0]
+      }
+      
+      console.log("Interview update data:", interviewUpdateData)
+      await axios.put(`${api.interviews}/${interviewId}`, interviewUpdateData)
+
+      toast.success(`Interview marked as done. You can approve or reject it later.`, { position: "top-center" })
+      
+      fetchInterviews()
+    } catch (error) {
+      console.error("Mark as done error:", error.response?.data || error.message)
+      
+      if (error.response?.data?.errors) {
+        console.error("Validation errors:", error.response.data.errors)
+        const errorMsg = Object.entries(error.response.data.errors)
+          .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
+          .join('; ')
+        toast.error(`Validation failed: ${errorMsg}`, { position: "top-center", duration: 8000 })
+      } else {
+        toast.error(`Failed to mark as done: ${error.response?.data?.error || error.message}`, { position: "top-center" })
+      }
+    }
+  }
+
+  const updatePendingToCompleted = async (interviewId) => {
+    try {
+      const interview = interviews.find(i => i.id === interviewId)
+      
+      // Update interview status from pending to completed
+      const interviewUpdateData = {
+        applicant_id: interview.applicant_id,
+        date: interview.date,
+        time: interview.time || null,
+        type: interview.type || null,
+        address: interview.address || null,
+        notes: interview.notes || null,
+        status: 'completed',
+        completed_date: new Date().toISOString().split('T')[0]
+      }
+      
+      await axios.put(`${api.interviews}/${interviewId}`, interviewUpdateData)
+      toast.success(`Interview marked as completed.`, { position: "top-center" })
+      setShowPendingDialog(false)
+      setPendingInterview(null)
+      fetchInterviews()
+    } catch (error) {
+      console.error("Update pending error:", error.response?.data || error.message)
+      toast.error(`Failed to update interview`, { position: "top-center" })
+    }
+  }
+
   const completeInterview = async (interviewId, result) => {
     try {
       const interview = interviews.find(i => i.id === interviewId)
@@ -140,9 +264,10 @@ export default function Hr1InterviewPage() {
       const interviewUpdateData = {
         applicant_id: interview.applicant_id,
         date: interview.date,
-        time: interview.time,
-        type: interview.type,
-        notes: interview.notes,
+        time: interview.time || null,
+        type: interview.type || null,
+        address: interview.address || null,
+        notes: interview.notes || null,
         status: 'completed',
         result: result,
         completed_date: new Date().toISOString().split('T')[0]
@@ -170,7 +295,17 @@ export default function Hr1InterviewPage() {
       fetchInterviews()
     } catch (error) {
       console.error("Complete interview error:", error.response?.data || error.message)
-      toast.error(`Failed to complete interview: ${error.response?.data?.error || error.message}`, { position: "top-center" })
+      
+      if (error.response?.data?.errors) {
+        console.error("Validation errors:", error.response.data.errors)
+        console.error("Debug data:", error.response.data.debug_data)
+        const errorMsg = Object.entries(error.response.data.errors)
+          .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
+          .join('; ')
+        toast.error(`Validation failed: ${errorMsg}`, { position: "top-center", duration: 8000 })
+      } else {
+        toast.error(`Failed to complete interview: ${error.response?.data?.error || error.message}`, { position: "top-center" })
+      }
     }
   }
 
@@ -245,7 +380,15 @@ export default function Hr1InterviewPage() {
               
               <div>
                 <label className="block text-sm font-medium mb-2">Interview Type</label>
-                <Select onValueChange={setInterviewType}>
+                <Select onValueChange={(value) => {
+                  setInterviewType(value)
+                  // Auto-fill address for in-person interviews
+                  if (value === 'In-person') {
+                    setInterviewAddress('Ph.4, North Olympus Subdivision, Mendelssohn, Novaliches, Quezon City, 1124 Metro Manila')
+                  } else {
+                    setInterviewAddress('')
+                  }
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select interview type" />
                   </SelectTrigger>
@@ -257,14 +400,25 @@ export default function Hr1InterviewPage() {
                 </Select>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium mb-2">Notes (Optional)</label>
-                <Input
-                  placeholder="Additional notes or instructions"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </div>
+              {interviewType === 'In-person' ? (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Address <span className="text-red-500">*</span></label>
+                  <Input
+                    placeholder="Enter interview location address"
+                    value={interviewAddress}
+                    onChange={(e) => setInterviewAddress(e.target.value)}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Notes (Optional)</label>
+                  <Input
+                    placeholder="Meeting link or additional instructions"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </div>
+              )}
               
               <div className="flex gap-2 pt-4">
                 <Button variant="outline" onClick={() => setShowScheduleDialog(false)} className="flex-1">
@@ -312,6 +466,14 @@ export default function Hr1InterviewPage() {
             className={statusFilter === "scheduled" ? "bg-blue-600 hover:bg-blue-700" : ""}
           >
             Scheduled
+          </Button>
+          <Button
+            variant={statusFilter === "pending" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("pending")}
+            className={statusFilter === "pending" ? "bg-yellow-600 hover:bg-yellow-700 text-white" : ""}
+          >
+            Pending
           </Button>
           <Button
             variant={statusFilter === "approved" ? "default" : "outline"}
@@ -363,6 +525,7 @@ export default function Hr1InterviewPage() {
             .filter(interview => {
               if (statusFilter === "all") return true
               if (statusFilter === "scheduled") return interview.status === "scheduled"
+              if (statusFilter === "pending") return interview.status === "pending"
               if (statusFilter === "approved") return interview.result === "approved"
               if (statusFilter === "rejected") return interview.result === "rejected"
               return true
@@ -383,14 +546,20 @@ export default function Hr1InterviewPage() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <Badge 
-                        variant={interview.status === 'scheduled' ? 'default' : interview.status === 'completed' ? 'secondary' : 'destructive'}
+                        variant={
+                          interview.status === 'scheduled' ? 'default' : 
+                          interview.status === 'pending' ? 'default' :
+                          interview.status === 'completed' ? 'secondary' : 
+                          'destructive'
+                        }
                         className={
                           interview.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                          interview.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                           interview.status === 'completed' ? 'bg-green-100 text-green-800' :
                           'bg-red-100 text-red-800'
                         }
                       >
-                        {interview.status || 'Scheduled'}
+                        {interview.status === 'pending' ? 'Pending' : interview.status || 'Scheduled'}
                       </Badge>
                       {interview.status === 'completed' && interview.result && (
                         <Badge 
@@ -442,9 +611,16 @@ export default function Hr1InterviewPage() {
                         {interview.type}
                       </div>
                     )}
+                    
+                    {interview.type === 'In-person' && interview.address && (
+                      <div className="flex items-center text-xs text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-md border border-blue-200 dark:border-blue-800">
+                        <MapPin className="h-3.5 w-3.5 mr-2 text-blue-500 dark:text-blue-400" />
+                        <span className="font-medium">{interview.address}</span>
+                      </div>
+                    )}
                   </div>
                   
-                  {interview.notes && (
+                  {interview.notes && interview.type !== 'In-person' && (
                     <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-lg mt-2 border border-gray-200 dark:border-gray-700">
                       <p className="text-xs text-gray-700 dark:text-gray-300">
                         <span className="font-medium">Notes: </span>
@@ -455,7 +631,74 @@ export default function Hr1InterviewPage() {
                 </CardContent>
                 
                 <CardFooter className="pt-2 pb-3">
-                  {interview.status === 'scheduled' ? (
+                  {interview.status === 'pending' ? (
+                    <div className="flex gap-2 w-full">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                        onClick={() => approveConfirmation.confirm(() => completeInterview(interview.id, 'approved'))}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                        onClick={() => rejectConfirmation.confirm(() => completeInterview(interview.id, 'rejected'))}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => deleteConfirmation.confirm(() => deleteInterview(interview.id))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : interview.status === 'scheduled' ? (
+                    <div className="flex flex-col gap-2 w-full">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                        onClick={() => markDoneConfirmation.confirm(() => markAsDone(interview.id))}
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        Mark as Done
+                      </Button>
+                      <div className="flex gap-2 w-full">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                          onClick={() => approveConfirmation.confirm(() => completeInterview(interview.id, 'approved'))}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Approve
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                          onClick={() => rejectConfirmation.confirm(() => completeInterview(interview.id, 'rejected'))}
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => deleteConfirmation.confirm(() => deleteInterview(interview.id))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : interview.status === 'completed' && !interview.result ? (
                     <div className="flex gap-2 w-full">
                       <Button 
                         variant="outline" 
@@ -542,6 +785,15 @@ export default function Hr1InterviewPage() {
         description="Are you sure you want to reject this interview? This will update the applicant's status."
         confirmText="Reject"
         variant="destructive"
+      />
+
+      <ConfirmationModal
+        open={markDoneConfirmation.isOpen}
+        onOpenChange={markDoneConfirmation.setIsOpen}
+        onConfirm={markDoneConfirmation.onConfirm}
+        title="Mark Interview as Done"
+        description="Mark this interview as completed? You can approve or reject it later."
+        confirmText="Mark as Done"
       />
     </motion.div>
   )
